@@ -68,6 +68,14 @@ class Holiday:
 			return False
 		return (self.globes[globenum][0], self.globes[globenum][1], self.globes[globenum][2])
 
+        def set_pattern(self, pattern):
+                """
+                Set the entire string in one go
+                """
+                if len(pattern) != self.NUM_GLOBES:
+                        raise ValueError("pattern length incorrect: %d != %d" % ( len(pattern), self.NUM_GLOBES) )
+                self.globes = pattern[:]
+
 	def chase(self, direction="True"):
 		"""Rotate all of the globes around - up if TRUE, down if FALSE"""
 		return
