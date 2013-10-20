@@ -10,12 +10,23 @@ License: MIT (see LICENSE for details)
 """
 
 __author__ = 'Mark Pesce'
-__version__ = '0.02-dev'
+__version__ = '1.0b3'
 __license__ = 'MIT'
 
 import json, socket, os, sys
 import drawlight, setlights
-from bottle import Bottle, run, static_file, post, request
+from bottle import Bottle, run, static_file, post, request, error, abort
+
+# On the command line we can tell iotas to go into real mode possibly
+# invoke as python iotas.py nosim to avoid simulation mode -- which holideck won't
+#
+if len(sys.argv) == 1:
+	SIM_STATE = True
+else:
+	if sys.argv[1] == 'nosim':
+		SIM_STATE = False
+	else:
+		SIM_STATE = True
 
 app = Bottle()
 app.devices = []
@@ -31,11 +42,26 @@ except ImportError:
 	print "No SWIFT capabilities"
 
 #docroot = '/home/mpesce/iotas'
-docroot = os.path.join(os.getcwd(), 'iotas') 		# Hopefully we startup in this directory
+#docroot = os.path.join(os.getcwd(), 'iotas') 		# Hopefully we startup in this directory
+if SIM_STATE == False:
+	docroot = os.getcwd()				# Bare startup directory
+else:
+	docroot = os.path.join(os.getcwd(), 'iotas') 	# Holideck startup in this directory
+
 print "Startup directory %s" % docroot
 default_name = 'index.html'
 
+# If we 404, we go to the root.
 # Let's do the basic page loadery here
+@app.error(404)
+def redirect_404(error):
+    ua = request.headers.get('User-Agent')
+    if ua.find('CaptiveNetworkSupport') != -1:
+        print 'This is a WiFi login probe'
+	return 'Not a Wifi login, sorry'
+    else:
+        return server_root()
+
 @app.route('/')
 def server_root():
 	global docroot
@@ -91,7 +117,7 @@ def do_iotas_info():
 	# end = html.find("</body>")
 	# start = html.find("Address:") + 9
 	# external_ip = html[start:end].strip() 
-	resp = { "version": "0.1a", "apis": [], "host_name": hostname, "ip": external_ip }
+	resp = { "version": __version__, "apis": [], "host_name": hostname, "ip": external_ip, "local_device": app.licht.device_type, "local_name": app.licht.name }
 	return json.dumps(resp)
 
 @app.get('/devices')
@@ -103,7 +129,7 @@ def do_devices():
 	devs = app.licht.get_devices()
 	for devi in app.devices:
 		devs.append(app.licht.get_info())
-	resp = { "block": "EngineRoom by MooresCloud", "devices": devs, "name": thename }
+	resp = { "block": "Holiday by MooresCloud", "devices": devs, "name": thename }
 	return json.dumps(resp)
 
 # THESE API CALLS ARE DEPRECATED
@@ -122,29 +148,29 @@ def set_light_values():
 	d = request.body.read()
 	if len(d) == 0:
 		return json.dumps({"value": False})
-	print "Received %s" % d
+	#print "Received %s" % d
 	try:
 		dj = json.loads(d)
 	except:
 		print "Bad JSON data, aborting..."
 		return json.dumps({"value": False})
 	if 'value' in dj:
-		print "there is a value"
+		#print "there is a value"
 		triplet = dj['value']
 	else:
 		return json.dumps({"value": False})
 			
-	print "set_light_values %s" % triplet
+	#print "set_light_values %s" % triplet
 	retval = app.licht.set_light_values(triplet)
 	return json.dumps(retval)
 
 @app.put('/device/light/setlights')
 def do_setlights():
 	d = request.body.read()
-	print "Received %s" % d
+	#print "Received %s" % d
 	try:
 		dj = json.loads(d)
-		print len(dj['lights'])
+		#print len(dj['lights'])
 	except:
 		print "Bad JSON data, aborting..."
 		return json.dumps({"value": False})
@@ -253,7 +279,32 @@ def afl():
 	# Pass that along to wherever it needs to go
 	resp = app.licht.afl(dj)
 	return json.dumps(resp)
-    
+
+def new_run():
+	""" This is the real run method, we hope"""
+	# Instance the devices that we're going to control
+	# Add each to the control ring. For no very good reason.
+	#
+	ourname = "%s.local" % socket.gethostname()
+	import devices.moorescloud.holiday.driver as driver
+	app.licht = driver.Holiday(remote=False, address='localhost', name='localhost')	# Connect to a real, local device
+	app.licht.create_routes(app)										# Adds in all the routes for device
+
+	#the_srv = 'wsgiref'  
+	the_srv = 'cherrypy'
+	#print app.licht
+
+	#print 'Routes'
+	#for rt in app.routes:
+	#	print rt.method, rt.rule, rt.callback
+	
+	print "Running..."
+	# Try to run on port 80, if that fails, go to 8080
+	try:
+		app.run(host='0.0.0.0', port=80, debug=True, server=the_srv)
+	except socket.error as msg:
+		print "Couldn't get port, you need to run in superuser!"
+		sys.exit(1)
 
 def old_run(port):
 	"""invoke run when loading as a module in the simulator"""
@@ -297,9 +348,9 @@ def old_run(port):
 	the_srv = 'cherrypy'
 	#print app.licht
 
-	#print 'Routes'
-	#for rt in app.routes:
-	#	print rt.method, rt.rule, rt.callback
+	print 'Routes'
+	for rt in app.routes:
+		print rt.method, rt.rule, rt.callback
 	
 	print "Running..."
 	# Try to run on port 80, if that fails, go to 8080
@@ -349,4 +400,8 @@ def run(port, queue):
 			socknum += 1
 
 if __name__ == '__main__':
-	old_run(port=8080)
+	if SIM_STATE == True:
+		old_run(port=8080)
+	else:
+		new_run()
+

@@ -1,0 +1,15 @@
+/*
+	@file: apps/settings/hostname/hostname.css
+*/
+
+#hostname {
+	background: #000;
+}
+
+#hostname #hostnametext {
+	padding: .65em;
+}
+
+#hostname #setbutton {
+	float: right;
+}

@@ -1,25 +1,31 @@
-/* API Demo App */
+/*
+	@file: apps/api-demo/api-demo.css
+*/
 
 #api-demo {
 	background: #000;
 }
 
-#api-demo p {
-	margin: 0 auto;
-	width: 80%;
+#api-demo img {
+	float: left;
+	width: 33%;
+}
+
+#api-demo h2 {
+	margin-top: 1.3em;
+	font-size: 2em;
+}
+
+#api-demo p.lede {
+	font-size: 14px;
 }
 
 #api-demo .switch {
-	margin: 0 auto;
-	width: 100px;
+	width: 35%;
+	clear: left;
 }
 
-#api-demo .ui-btn-active {
-	background: crimson;
-	font-weight: bold;
-	color: #fff;
-	cursor: pointer;
-	text-shadow: 0 1px 0 #3373a5;
-	text-decoration: none;
-	background-image: none;
+#api-demo .switch form {
+	margin: 0 auto;
+	width: 100px;
 }

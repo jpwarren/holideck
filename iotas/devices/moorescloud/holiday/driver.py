@@ -10,57 +10,75 @@ License: MIT (see LICENSE for details)
 """
 
 __author__ = 'Mark Pesce'
-__version__ = '0.1a'
+__version__ = '1.0b3'
 __license__ = 'MIT'
 
 import subprocess, time, os
 import requests 
 import json
 from multiprocessing import Queue 
-from bottle import request
+from bottle import request, abort
 
 class Holiday:
-	def old__init__(self, remote=False, address='sim', name='nameless'):
-		self.numleds = 50
-		self.leds = []			# Array of LED values. This may actually exist elsewhere eventually.
-		self.address = ''
-		self.name = name
-
-		if remote == False:
-			self.remote = False
-			if address == 'sim':
-				self.pipename = os.path.join(os.path.expanduser('~'), 'pipelights.fifo')
-				self.address = address
-			else:
-				self.pipename = "/run/pipelights.fifo"
-				self.address = address
-			try:
-				self.pipe = open(self.pipename,"wb")
-			except:
-				print "Couldn't open the pipe, there's gonna be trouble!"
-			ln = 0
-		else:
-			self.address = address
-			self.remote = True
-
-		for ln in range(self.numleds):
-			self.leds.append([0x00, 0x00, 0x00])	# Create and clear an array of RGB LED values
-
-		return
+# 	def old__init__(self, remote=False, address='sim', name='nameless'):
+# 		self.numleds = 50
+# 		self.leds = []			# Array of LED values. This may actually exist elsewhere eventually.
+# 		self.address = ''
+# 		self.name = name
+# 		self.isSim = False
+# 
+# 		if remote == False:
+# 			self.remote = False
+# 			if address == 'sim':
+# 				self.pipename = os.path.join(os.path.expanduser('~'), 'pipelights.fifo')
+# 				self.address = address
+# 			else:
+# 				self.pipename = "/run/pipelights.fifo"
+# 				self.address = address
+# 			try:
+# 				self.pipe = open(self.pipename,"wb")
+# 			except:
+# 				print "Couldn't open the pipe, there's gonna be trouble!"
+# 			ln = 0
+# 		else:
+# 			self.address = address
+# 			self.remote = True
+# 
+# 		for ln in range(self.numleds):
+# 			self.leds.append([0x00, 0x00, 0x00])	# Create and clear an array of RGB LED values
+# 
+# 		return
 
 	def __init__(self, remote=False, address='sim', name='nameless', queue=None):
 		self.numleds = 50
 		self.leds = []			# Array of LED values. This may actually exist elsewhere eventually.
 		self.address = ''
 		self.name = name
+		self.isSim = False
+		self.inDevMode = False
+		self.device_type = 'moorescloud.holiday'
+		self.appbase = '/home/holiday/bin/apps'		# When turning apps on and off, go here for them.
+
+		# Using the new compositor 'compose' if True
+		self.compose = True 		
+		if (self.compose == True):
+			self.pid = os.getpid()			# Must pass PID to compose
+		else:
+			self.pid = None
 
 		if remote == False:
 			self.remote = False
 			if address == 'sim':
 				self.queue = queue
+				self.isSim = True
+				self.compose = False		# If simulator, we're not using the new compose
 				#print "IoTAS Queue at %s" % (self.queue,)
 			else:
-				self.pipename = "/run/pipelights.fifo"
+				if (self.compose == True):
+					self.pipename = '/run/compose.fifo'
+					print "Using compose 2nd generation compositor with PID %d" % self.pid
+				else:
+					self.pipename = "/run/pipelights.fifo"
 				self.address = address
 				try:
 					self.pipe = open(self.pipename,"wb")
@@ -93,10 +111,189 @@ class Holiday:
 
 		routebase = """/iotas/0.1/device/moorescloud.holiday/%s/""" % self.name
 
+		@theapp.get(routebase + 'hostname')
+		def get_hostname():
+			"""Return the hostname as nicely formatted JSON"""
+			import socket
+			n = { "hostname": socket.gethostname() }
+			return json.dumps(n)
+
+		@theapp.put(routebase + 'hostname')
+		def set_hostname():
+			"""Sets the hostname for the device, given a nicely formatted JSON request 
+			triggers a script in /home/holiday/util to do the work"""
+			d = request.body.read()
+			print "Received %s" % d
+			try:
+				dj = json.loads(d)
+			except:
+				print "Bad JSON data, aborting"
+				abort(400, "Bad JSON")
+				return
+
+			if 'hostname' in dj:
+				try:
+					c = subprocess.check_output(['/home/holiday/util/set_hostname.sh', dj['hostname']])
+				except subprocess.CalledProcessError:
+					abort(500, "Hostname change failed")
+			else:
+				abort(400, "No hostname provided")
+				return
+			return
+
+		@theapp.get(routebase + 'devmode')
+		def get_devmode():
+			""" Return a boolean indicating whether the Holiday is in developer mode or not"""
+			if self.isSim == True:
+				the_response = { "devmode": self.inDevMode }
+			else:
+				try:
+					c = subprocess.check_output(['/home/holiday/util/get_devmode.sh'])
+					the_response = { "devmode": True }
+				except subprocess.CalledProcessError:
+					the_response = { "devmode": False }
+			return json.dumps(the_response)
+
+		@theapp.put(routebase + 'devmode')
+		def set_devmode():
+			""" Sets developer mode to the state passed in the nicely formatted JSON """
+			d = request.body.read()
+			print "Received %s" % d
+			try:
+				dj = json.loads(d)
+			except:
+				print "Bad JSON data, aborting"
+				abort(400, "Bad JSON")
+				return
+			if 'devmode' in dj:
+				devbool = dj['devmode']
+			else:
+				print "No devmode found, aborting"
+				abort(400, "No devmode specified")
+				return
+
+			if self.isSim == True:
+				self.inDevMode = devbool
+			else:
+				try:
+					c = subprocess.check_output(['/home/holiday/util/set_devmode.sh', str(devbool)])
+				except subprocess.CalledProcessError:
+					abort(500, "Developer mode set failed")
+					return
+			return			
+
+		@theapp.get(routebase + 'update')
+		def get_update_status():
+			"""Return True if there are updates to be done"""
+			try:
+				c = subprocess.check_output(['/home/holiday/updates/test_updates.sh'])
+				updates_ready = True
+			except subprocess.CalledProcessError:
+				updates_ready = False
+			n = { "update": updates_ready }
+			return json.dumps(n)
+
+		@theapp.put(routebase + 'update')
+		def do_update():
+			"""Runs script to install updates"""
+			try:
+				c = subprocess.check_output(['/home/holiday/updates/do_updates.sh'])
+				updates_done = True
+			except subprocess.CalledProcessError:
+				updates_done = False
+			n = { "update": updates_done }
+			return json.dumps(n)
+
+		@theapp.put(routebase + 'rainbow')
+		def do_rainbow():
+			"""Starts/stops the rainbow app"""
+			d = request.body.read()
+			print "Received %s" % d
+			try:
+				dj = json.loads(d)
+			except:
+				print "Bad JSON data, aborting"
+				abort(400, "Bad JSON")
+				return
+
+			if (dj['isStart'] == True):
+				print "starting rainbow app"
+				app_path = os.path.join(self.appbase, 'rainbow')
+				print 'app_path: %s' % app_path
+				try:
+					c = subprocess.call(['/home/holiday/scripts/start-app.sh', app_path], shell=False)
+					print "rainbow app started"
+					success = True
+				except subprocess.CalledProcessError:
+					print "Error starting process"
+					success = False				
+			else:
+				print "stopping rainbow app"
+				try:
+					c = subprocess.call(['/home/holiday/scripts/stop-app.sh'], shell=True)
+					print "rainbow app stopped"
+					success = True
+				except subprocess.CalledProcessError:
+					print "Error stopping process"
+					success = False
+
+			return json.dumps({"success": success})
+
+		@theapp.put(routebase + 'runapp')
+		def do_runapp():
+			"""Starts/stops the named app"""
+			d = request.body.read()
+			print "Received %s" % d
+			try:
+				dj = json.loads(d)
+			except:
+				print "Bad JSON data, aborting"
+				abort(400, "Bad JSON")
+				return
+
+			# Makes sure we have everything we need here
+			if (('isStart' in dj) and ('appname' in dj)):
+				print "We have the parameters"
+			else:
+				print "Missing JSON parameters, aborting"
+				abort(400, "Missing JSON parameters")
+				return
+
+			if (dj['isStart'] == True):
+				print "starting app %s" % dj['appname']
+				app_path = os.path.join(self.appbase, dj['appname'])
+				print 'app_path: %s' % app_path
+				try:
+					c = subprocess.call(['/home/holiday/scripts/start-app.sh', app_path], shell=False)
+					print "%s app started" % dj['appname']
+					success = True
+				except subprocess.CalledProcessError:
+					print "Error starting process"
+					success = False				
+			else:
+				print "stopping %s app" % dj['appname']
+				try:
+					c = subprocess.call(['/home/holiday/scripts/stop-app.sh'], shell=True)
+					print "%s app stopped" % dj['appname']
+					success = True
+				except subprocess.CalledProcessError:
+					print "Error stopping process"
+					success = False
+
+			return json.dumps({"success": success})
+
+		@theapp.get(routebase + 'version')
+		def get_version():
+			return json.dumps({ "version": __version__ })
+
+		@theapp.get(routebase + 'swift_version')
+		def get_swift_version():
+			return json.dumps({ "version": "1.0b3" })
+
+
 		@theapp.get(routebase)
 		def get_holidays():
 			return json.dumps(self.get_devices())
-
 
 		@theapp.put(routebase + 'setlights')
 		def do_setlights():
@@ -335,15 +532,41 @@ class Holiday:
 			urlstr = 'http://%s/device/light/setlights' % self.address
 			r = requests.put(urlstr, data=hol_msg_str)
 		else:
-			echo = ""
-			ln = 0
-			while (ln < self.numleds):
-				tripval = (self.leds[ln][0] * 65536) + (self.leds[ln][1] * 256) + self.leds[ln][2]
-				#echo = echo + "%6X" % tripval + "\\" + "\\" + "x0a"  # magic pixie formatting eh?
-				echo = echo + "%06X\n" % tripval
-				ln = ln+1
-			#print echo
-			self.queue.put(echo, block=False)
+			if (self.compose == True):
+				"""Render the LED array to the Holiday
+				This is done by composing a text string in memory
+				Which is then written out to the compositor FIFO pipe in a single go, 
+				So it should be reasonably fast."""
+				rend = []
+				rend.append("0x000010\n")		# clear flag set for now 
+				pid_str = "0x%06x\n" % self.pid
+				rend.append(pid_str)
+				#print pid_str
+				#compositor_str = compositor_str + pid_str		# First two lines are placeholders for now, will be meaningful
+				ln = 0
+				while (ln < self.numleds):
+					tripval = (self.leds[ln][0] * 65536) + (self.leds[ln][1] * 256) + self.leds[ln][2]
+					rend.append("0x%06X\n" % tripval)
+					ln = ln+1
+				self.pipe.write(''.join(rend))
+				self.pipe.flush()				
+			else:
+				echo = ""
+				ln = 0
+				slist = []
+				while (ln < self.numleds):
+					tripval = (self.leds[ln][0] * 65536) + (self.leds[ln][1] * 256) + self.leds[ln][2]
+					#echo = echo + "%6X" % tripval + "\\" + "\\" + "x0a"  # magic pixie formatting eh?
+					#echo = echo + "%06X\n" % tripval
+					slist.append("%06X\n" % tripval)
+					ln = ln+1
+				#print echo
+				echo = ''.join(slist)	# Meant to be very much faster
+				if self.isSim == True:
+					self.queue.put(echo, block=False)
+				else:
+					self.pipe.write(echo)
+					self.pipe.flush()
 		return
 		
 	def on(self):

@@ -2,16 +2,27 @@
 	@file: apps/photograb/photograb.css
 */
 
-#photograb-app form {
-	margin: 10px 0 0 0;
+#photograb {
+	background: #000;
 }
 
-#photograb-app .photograb-button { 
+#photograb .canvas-container {
+	margin-bottom: 10px;
+	line-height: 0;
 	width: 100%;
-	border: 1px solid #fff; 
-	background: #bbb; 
-	color: white; 
-	padding: 10px; 
-	cursor: pointer; 
-	-webkit-border-radius: 4px; 
+}
+
+#photograb #canvas {
+	border: 1px solid #fff;
+	background: #000;
+}
+
+#photograb .paintarea-containter {
+	line-height: 0;
+	width: 100%;
+}
+
+#photograb #paintarea {
+	border: 1px solid #fff;
+	background: #000;
 }

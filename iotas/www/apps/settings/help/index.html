@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Holiday Help</title>
+	
+</head>
+
+<body>
+	
+	<div data-role="page" id="help" data-add-back-btn="true">
+		
+		<script src="help.js"></script>
+	
+		<script>
+			
+			// Start the App
+			function start_app() {
+				console.log("start_app")
+				theApp = new help(); // Instance an App
+				theApp.appStart(); // Start the App
+			}
+			
+			// Stop the App
+			function stop_app() {
+				console.log("stop_app");
+				theApp.appQuit();
+				$( document ).undelegate("#help", "pageinit", start_app);
+				$( document ).undelegate("#help", "pagebeforehide", stop_app );
+			}
+	
+			console.log("Location #help");
+			
+			$( document ).delegate("#help", "pageinit", start_app);
+			$( document ).delegate("#help", "pagebeforehide", stop_app);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#help' ).on("pagehide", function(event, ui) {
+				console.log('help.remove');
+				$('#help').remove();			// Dump the page from memory
+			});
+	
+		</script>
+
+		
+		<header data-role="header" data-position="fixed">
+			
+			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Help</a>
+			
+			<h1>Holiday Help</h1>
+			
+		</header>
+		
+		<section data-role="content">
+			
+			<span id="helptext">Coming soon!</span>
+
+			
+		</section>
+		
+	</div>
+	<!-- /help -->
+		
+</body>
+</html>

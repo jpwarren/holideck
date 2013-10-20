@@ -15,31 +15,36 @@ function iotas(address) {
 	} else {
 		this.urlbase = this.address;
 	}
-	console.log(this.urlbase);
-
-	var ip_addr = '';
-	var vers = '';
-	var hostnm = '';
-	var apis = null;
+	console.log("urlbase: " + this.urlbase);
 	
-	this.ip_addr = ip_addr;
-	this.vers = vers;
-	this.hostnm = hostnm;
-	this.apis = apis;
+	this.ip_addr = null;
+	this.vers = null;
+	this.hostnm = null;
+	this.apis = null;
 	this.get_status = get_status;
 		
 	// Get the status of IoTAS, config information, etc.
+	// Bit sneaky in its use of global variables, but whatevs.
 	function get_status() {
 		$.ajax({
 			type: "GET",
-			url: this.urlbase + 'iotas', 
+			async: false,
+			url: iotasrv.urlbase + 'iotas', 
 			success: function(data) {
 				jd = JSON.parse(data)
 				console.log(jd);
-				this.ip_addr = jd.ip;
-				this.vers = jd.version;
-				this.hostnm = jd.hostname;
-				this.apis = jd.apis;
+				iotasrv.ip_addr = jd.ip;
+				iotasrv.vers = jd.version;
+				iotasrv.hostnm = jd.host_name;
+				iotasrv.apis = jd.apis;
+				iotasrv.local_device = jd.local_device;
+				iotasrv.local_name = jd.local_name;
+				iotasrv.device_url = iotasrv.urlbase + 'iotas/0.1/device/' + jd.local_device + '/' + jd.local_name + '/';
+				console.log("iotas.device_url is " + iotasrv.device_url);
+				console.log(iotasrv);
+			},
+			error: function() {
+				console.log("iotas.get_status failed");
 			}
 		});
 	}

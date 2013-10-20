@@ -1,7 +1,33 @@
-/* Rainbow App */
+/*
+	@file: apps/rainbow/rainbow.css
+*/
 
 #rainbow {
 	background: #000;
+	
+	/*mozilla rainbow gradient*/	
+	background-image: -moz-linear-gradient(left top, right bottom,
+		from(red),
+	  color-stop(16%, orange),
+	  color-stop(32%, yellow),
+		color-stop(48%, green),
+	  color-stop(60%, blue),
+		color-stop(76%, indigo),
+		to(violet));
+		
+	/*webkit rainbow gradient*/
+	background-image: -webkit-gradient(linear,  left top,  left bottom, 
+		color-stop(0.00, red), 
+		color-stop(16%, orange),
+		color-stop(32%, yellow),
+		color-stop(48%, green),
+		color-stop(60%, blue),
+		color-stop(76%, indigo),
+		color-stop(1.00, violet));
+}
+
+#rainbow section {
+	padding-top: 3em;
 }
 
 #rainbow .switch {
@@ -9,12 +35,3 @@
 	width: 100px;
 }
 
-#rainbow .ui-btn-active {
-	background: blue;
-	font-weight: bold;
-	color: #fff;
-	cursor: pointer;
-	text-shadow: 0 1px 0 #3373a5;
-	text-decoration: none;
-	background-image: none;
-}

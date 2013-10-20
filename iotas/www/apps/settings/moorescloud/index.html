@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>The MooresCloud</title>
+
+</head>
+
+<body>
+	
+	<div data-role="page" id="moorescloud" data-add-back-btn="true">
+		
+		<script src="moorescloud.js"></script>
+	
+		<script>
+			
+			// Start the App
+			function start_app() {
+				console.log("start_app")
+				theApp = new moorescloud(); // Instance an App
+				theApp.appStart(); // Start the App
+			}
+			
+			// Stop the App
+			function stop_app() {
+				console.log("stop_app");
+				theApp.appQuit();
+				$( document ).undelegate("#moorescloud", "pageinit", start_app);
+				$( document ).undelegate("#moorescloud", "pagebeforehide", stop_app );
+			}
+	
+			console.log("Location #moorescloud");
+			
+			$( document ).delegate("#moorescloud", "pageinit", start_app);
+			$( document ).delegate("#moorescloud", "pagebeforehide", stop_app);
+
+						// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#moorescloud' ).on("pagehide", function(event, ui) {
+				console.log('moorescloud.remove');
+				$('#moorescloud').remove();			// Dump the page from memory
+			});
+	
+		</script>
+
+		
+		<header data-role="header" data-position="fixed">
+			
+			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Apps</a>
+			
+			<h1>The MooresCloud</h1>
+			
+		</header>
+		
+		<section data-role="content">
+			
+			<p>Coming soon!</p>
+
+			
+		</section>
+		
+	</div>
+	<!-- /moorescloud -->
+		
+</body>
+</html>

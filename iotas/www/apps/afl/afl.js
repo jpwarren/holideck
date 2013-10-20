@@ -1,3 +1,7 @@
+/*
+	@file: apps/afl/afl.js
+*/
+
 function afl() {
 	
 	this.appStart = appStart;

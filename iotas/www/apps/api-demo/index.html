@@ -3,19 +3,7 @@
 <head>
 	
 	<title>Holiday &raquo; API Demo</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="apple-mobile-web-app-capable" content="yes" />
 	
-	<!--
-	
-	<link rel="stylesheet" href="../../css/jquery.mobile-1.3.1.css" />
-	<link rel="stylesheet" href="../../css/holiday-app.css" />
-	<script src="../../js/jquery-1.9.1.min.js"></script>
-	<script src="../../js/jquery.mobile-1.3.1.js"></script>
-	<script src="../../js/holiday.js"></script>
-
-	-->
-
 </head>
 
 <body>
@@ -45,6 +33,12 @@
 			
 			$( document ).delegate("#api-demo", "pageinit", start_app);
 			$( document ).delegate("#api-demo", "pagebeforehide", stop_app);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#api-demo' ).on("pagehide", function(event, ui) {
+				console.log('api-demo.remove');
+				$('#api-demo').remove();			// Dump the page from memory
+			});
 	
 		</script>
 
@@ -61,7 +55,11 @@
 			
 			<img src="api-demo.png" alt=""/>
 			
-			<p>This demo shows how HTML5 &amp; Javascript can be used to individually control every light on the Holiday.</p>
+			<h2>API Demo</h2>
+					
+			<p class="lede">This demo shows how HTML5 &amp; Javascript can be used to individually control every light on the Holiday.</p>
+			
+			<p>Essentially what’s happening here, is that an HTML5 form element triggers the start of some Javascript functionality. The Javascript functions generate a random RGB colour 50 times, once for each globe. Fifty colours are sent over the air to the Holiday controller, which sends those colours down the strand. This happens every 500ms until the switch is flicked off.</p>
 			
 			<div class="switch">
 				

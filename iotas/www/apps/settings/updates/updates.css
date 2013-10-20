@@ -1,0 +1,19 @@
+/*
+	@file: apps/settings/updates/updates.css
+*/
+
+#updates {
+	background: #000;
+}
+
+#updates p {
+	margin: 0 auto;
+	width: 80%;
+}
+
+#updatetext {
+	font-family: 'Droid Sans', 'droid_sansregular', Arial, Helvetica, sans-serif;
+	font-size: 14px;
+	color: #fff;
+	text-shadow: none;
+}

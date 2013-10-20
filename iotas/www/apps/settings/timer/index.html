@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Holiday &raquo; Timer</title>
+
+</head>
+
+<body>
+	
+	<div data-role="page" id="timer" data-add-back-btn="true">
+		
+	
+		<script src="timer.js"></script>
+	
+		<script>
+			
+			// Start the App
+			function start_app() {
+				console.log("start_app")
+				theApp = new timer(); // Instance an App
+				theApp.appStart(); // Start the App
+			}
+			
+			// Stop the App
+			function stop_app() {
+				console.log("stop_app");
+				theApp.appQuit();
+				$( document ).undelegate("#timer", "pageinit", start_app);
+				$( document ).undelegate("#timer", "pagebeforehide", stop_app );
+			}
+	
+			console.log("Location #timer");
+			
+			$( document ).delegate("#timer", "pageinit", start_app);
+			$( document ).delegate("#timer", "pagebeforehide", stop_app);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#timer' ).on("pagehide", function(event, ui) {
+				console.log('timer.remove');
+				$('#timer').remove();			// Dump the page from memory
+			});
+	
+		</script>
+
+		
+		<header data-role="header" data-position="fixed">
+			
+			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Apps</a>
+			
+			<h1>Timer</h1>
+			
+		</header>
+		
+		<section data-role="content">
+			
+			<div class="times">
+				
+				<form>
+					
+			    <label for="time_start">On</label>
+			    <input type="time" name="time_start" id="time_start" value="">
+					
+			    <label for="time_stop">Off</label>
+			    <input type="time" name="time_stop" id="time_stop" value="">
+			    
+				</form>
+				
+				<a href="#" class="timerset" id="timerset" data-role="button" data-mini="true" data-inline="false"  data-iconpos="right" data-icon="refresh">Set Timer</a>
+				
+			</div>
+			
+		</section>
+		
+	</div>
+	<!-- /timer -->
+		
+</body>
+</html>

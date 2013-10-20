@@ -3,29 +3,14 @@
 <head>
 	
 	<title>Holiday &raquo; Photo Grabber</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="apple-mobile-web-app-capable" content="yes" />
 	
-	<link rel="apple-touch-icon" href="../../apple-touch-icon-57x57.png" />
-	<link rel="apple-touch-icon" sizes="72x72" href="../../apple-touch-icon-72x72.png" />
-	<link rel="apple-touch-icon" sizes="114x114" href="../../apple-touch-icon-114x114.png" />
-	<link rel="apple-touch-icon" sizes="144x144" href="../../apple-touch-icon-144x144.png" />
-	<link rel="apple-touch-startup-image" href="../../apple-touch-splash.png">
-	
-	<link rel="stylesheet" href="../../css/jquery.mobile-1.3.1.css" />
-	<link rel="stylesheet" href="../../css/holiday-app.css" />
-	<link href='http://fonts.googleapis.com/css?family=Droid+Sans:400,700|Droid+Sans+Mono|Droid+Serif:400,700' rel='stylesheet'>
-	
-	<script src="../../js/jquery-1.9.1.min.js"></script>
-	<script src="../../js/jquery.mobile-1.3.1.js"></script>
-	<script src="../../js/holiday.js"></script>
-
 </head>
 
 <body>
 	
 	<div data-role="page" id="photograb">
 	
+		<script src="megapix-image.js"></script>
 		<script src="photograb.js"></script>
 	
 		<script>
@@ -48,6 +33,12 @@
 	
 			$( document ).delegate("#photograb", "pageinit", start_app);
 			$( document ).delegate("#photograb", "pagebeforehide", stop_app);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#photograb' ).on("pagehide", function(event, ui) {
+				console.log('photograb.remove');
+				$('#photograb').remove();			// Dump the page from memory
+			});
 	
 		</script>
 
@@ -55,20 +46,37 @@
 			
 			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Apps</a>
 			
-			<h1>Photo Grab</h1>
+			<h1>Photo Grabber</h1>
 			
 		</header>
 		
 		<section data-role="content">
 			
-			<div class="selector">
+			<form>
+				<input class="photograb-button" id="pic" type="file" accept="image/*" capture="camera" onchange="handlefiles(this.files)" />
+			</form>
+			
+			<div class="canvas-container">
 				<canvas id="canvas" width="290" height="290">
 					Your browser does not support the HTML5 Canvas. 
 				</canvas>
 			</div>
+			
+			<div class="paintarea-container">
+				<canvas id="paintarea" width="290" height="50">
+					Your browser does not support the HTML5 Canvas. 
+				</canvas>
+			</div>
+			
+			<div class="debug">
+				<p class="canvas">Canvas: </p>
+				<p class="paintarea">PaintArea: </p>
+			</div>
+			
 		</section>
 		
 	</div>
-	<!-- /photograb -->		
+	<!-- /photograb -->
+	
 </body>
 </html>

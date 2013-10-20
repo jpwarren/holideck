@@ -20,6 +20,14 @@ function Holiday(address) {
 	this.gradient = gradient;
 	this.sendcmd = sendcmd;
 	this.sendcmdparam = sendcmdparam;
+	this.gethostname = gethostname;
+	this.sethostname = sethostname;
+	this.getdevmode = getdevmode;
+	this.setdevmode = setdevmode;
+	this.getUpdates = getUpdates;
+	this.doUpdates = doUpdates;
+	this.getHolidayVersion = getHolidayVersion;
+	this.getSwiftVersion = getSwiftVersion;
 
  	this.fastlights = fastlights;
 	var fastbulbs = [ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
@@ -36,6 +44,7 @@ function Holiday(address) {
  	this.nrl = nrl;
  	this.afl = afl;
  	this.rainbow = rainbow;
+ 	this.runapp = runapp;
  
 	function rgbtocolor(r, g, b) {
 	
@@ -153,15 +162,276 @@ function Holiday(address) {
 		});		
 	}
 
-	function rainbow(team_number) {
-		nrljson = JSON.stringify({"running": team_number});
+	function rainbow(isStart) {
+		console.log('holiday.rainbow');
+		rainbowjson = JSON.stringify({"isStart": isStart});
+		var rest_url = iotasrv.device_url +  'rainbow';
 		$.ajax({
 			type: "PUT",
-			url: this.urlbase + '/device/holiday/app/rainbow', 
-			data: nrljson
+			async: false,
+			url: rest_url, 
+			data: rainbowjson,
+			success: function(data, status, settings) 
+			{ 
+				dj = JSON.parse(data); 
+				if (dj.success == true) {
+					console.log("holiday.rainbow succeeded");
+				} else {
+					console.log("holiday.rainbow failed");					
+				}
+			},
+			error: function() 
+			{
+				console.log("holiday.rainbow did not end well.");
+			}
+		});
+	}
+
+	function runapp(appname, isStart) {
+		console.log('holiday.runapp');
+		runappjson = JSON.stringify({"isStart": isStart, "appname": appname});
+		var rest_url = iotasrv.device_url +  'runapp';
+		$.ajax({
+			type: "PUT",
+			async: false,
+			url: rest_url, 
+			data: runappjson,
+			success: function(data, status, settings) 
+			{ 
+				dj = JSON.parse(data); 
+				if (dj.success == true) {
+					console.log("holiday.runapp succeeded");
+				} else {
+					console.log("holiday.runapp failed");					
+				}
+			},
+			error: function() 
+			{
+				console.log("holiday.runapp did not end well.");
+			}
+		});
+	}
+
+	// Here are Holiday device-specific functions relating to MooresCloud OS
+	function gethostname() {
+		// Make an IoTAS call to return the state of device's hostname mode
+		// Use that result to flip the switch so it's reflective of the device state.
+		console.log('holiday.gethostname');
+		var rest_url = iotasrv.device_url +  'hostname';
+
+
+		$.ajax({
+			type: "GET",
+			async: false,
+			url: rest_url, 
+			success: function(data, status, settings) 
+			{ 
+				dj = JSON.parse(data); 
+				theApp.thehostname = dj.hostname;
+				console.log("Received hostname " + theApp.thehostname);
+
+				// Now set the value of the field to that.
+				$('#hostnametext').val(theApp.thehostname);
+			},
+			error: function() 
+			{
+				console.log("gethostname did not end well.");
+			}
+		});
+	}
+	
+	function sethostname(theName)
+	{
+		console.log('holiday.sethostname');
+		console.log("Will be setting hostname to " + theName);
+		var payload = new Object();
+		payload.hostname = theName;
+		console.log(payload);
+		var rest_url = iotasrv.device_url +  'hostname';
+
+
+		$.ajax({
+			type: "PUT",
+			async: false,
+			url: rest_url, 
+			data: JSON.stringify(payload),
+			success: function() 
+			{ 
+				console.log("Device name successfully changed to " + theName);
+			},
+			error: function() 
+			{
+				console.log("sethostname did not end well.");
+				// We should throw up an error dialog here.
+			}
+		});
+		return;
+	}
+
+	function getdevmode(doWhenDone) {
+		// Make an IoTAS call to return the state of device's developer mode
+		// Use that result to flip the switch so it's reflective of the device state.
+		// It returns the value of dev mode, a boolean.
+		//
+		console.log('holiday.getdevmode');
+		var rest_url = iotasrv.device_url +  'devmode';
+		console.log(rest_url);
+		$.ajax({
+			type: "GET",
+			async: false,
+			url: rest_url,
+			success: function(data, status, settings) 
+			{ 
+				var dj = JSON.parse(data); 
+				if (dj.devmode == false) {
+					console.log("devmode is off")
+				} else {
+					console.log("devmode is on")
+				}
+				doWhenDone(dj.devmode);
+			},
+			error: function() 
+			{
+				console.log("getdevmode did not end well.");
+				// Throw up an error dialog?
+			}
+		});
+	}
+
+	function setdevmode(newMode) {
+		console.log('holiday.setdevmode');
+		console.log(newMode);
+		var payload = new Object();
+		payload.devmode = newMode;
+		console.log(payload);
+		var rest_url = iotasrv.device_url +  'devmode';
+
+		$.ajax({
+			type: "PUT",
+			async: false,
+			url: rest_url,
+			data: JSON.stringify(payload),
+			success: function() 
+			{ 
+				console.log("Developer mode successfully changed");
+				return true;
+			},
+			error: function() 
+			{
+				console.log("setdevmode did not end well.");
+				return false;
+				// We should throw up an error dialog here.
+			}
+		});
+		return;
+	}
+
+	function getUpdates(doWhenDone) {
+		// Make an IoTAS call to return the state of device's developer mode
+		// Use that result to flip the switch so it's reflective of the device state.
+		// It returns the value of dev mode, a boolean.
+		//
+		console.log('holiday.getUpdates');
+		var rest_url = iotasrv.device_url +  'update';
+		console.log(rest_url);
+		$.ajax({
+			type: "GET",
+			async: true,
+			url: rest_url,
+			success: function(data, status, settings) 
+			{ 
+				var dj = JSON.parse(data); 
+				//console.log(dj);
+				if (dj.update == false) {
+					console.log("update test failed");
+				} else {
+					console.log("update test succeeded");
+				}
+				if (doWhenDone != null) {
+					doWhenDone(dj.update);
+				}
+			},
+			error: function() 
+			{
+				console.log("getUpdates did not end well.");
+				// Throw up an error dialog?
+			}
+		});
+	}
+
+	function doUpdates(doWhenDone) {
+		console.log('holiday.setUpdates');
+		var rest_url = iotasrv.device_url +  'update';
+		console.log(rest_url);
+		$.ajax({
+			type: "PUT",
+			async: true,
+			url: rest_url,
+			success: function(data, status, settings) 
+			{ 
+				var dj = JSON.parse(data); 
+				if (dj.update == false) {
+					console.log("updating failed")
+				} else {
+					console.log("updating succeeded")
+				}
+				if (doWhenDone != null) {
+					doWhenDone(dj.update);
+				}
+			},
+			error: function() 
+			{
+				console.log("setUpdates did not end well.");
+				return false;
+				// We should throw up an error dialog here.
+			}
+		});
+		return;
+	}
+
+	function getHolidayVersion(doWhenDone) {
+		console.log('holiday.getHolidayVersion');
+		var rest_url = iotasrv.device_url +  'version';
+		console.log(rest_url);
+		$.ajax({
+			type: "GET",
+			async: true,
+			url: rest_url,
+			success: function(data, status, settings) 
+			{ 
+				console.log('holiday.getHolidayVersion succeeded')
+				var dj = JSON.parse(data); 
+				doWhenDone(dj);
+			},
+			error: function() 
+			{
+				console.log("getHolidayVersion did not end well.");
+				// Throw up an error dialog?
+			}
 		});		
 	}
 
+	function getSwiftVersion(doWhenDone) {
+		console.log('holiday.getSwiftVersion');
+		var rest_url = iotasrv.device_url +  'swift_version';
+		console.log(rest_url);
+		$.ajax({
+			type: "GET",
+			async: true,
+			url: rest_url,
+			success: function(data, status, settings) 
+			{ 
+				console.log('holiday.getSwiftVersion succeeded')
+				var dj = JSON.parse(data); 
+				doWhenDone(dj);
+			},
+			error: function() 
+			{
+				console.log("getSwiftVersion did not end well.");
+				// Throw up an error dialog?
+			}
+		});		
+	}
 
 	// Legacy, ignored
 	//

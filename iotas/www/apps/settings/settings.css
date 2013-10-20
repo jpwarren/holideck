@@ -1,0 +1,14 @@
+/*
+	@file: apps/settings/settings.css
+*/
+
+#settings {
+	background: #000 url(../../assets/background-glow.png) no-repeat 50% 0%;
+	-webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
+
+
+

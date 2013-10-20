@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Holiday &raquo; Wifi</title>
+
+</head>
+
+<body>
+	
+	<div data-role="page" id="wifi">
+	
+		<script src="wifi.js"></script>
+	
+		<script>
+			
+			// Start the App
+			function startApp() {
+				console.log("function startApp");
+				theApp = new wifi(); // Instance an App
+				theApp.appStart(); // Start the App
+			}
+			
+			// Stop the App
+			function stopApp() {
+				console.log("function stopApp");
+				theApp.appQuit();
+				$( document ).undelegate("#wifi", "pageinit", startApp);
+				$( document ).undelegate("#wifi", "pagebeforehide", stopApp );
+			}
+	
+			console.log("Location #wifi");
+			
+			$( document ).delegate("#wifi", "pageinit", startApp);
+			$( document ).delegate("#wifi", "pagebeforehide", stopApp);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#wifi' ).on("pagehide", function(event, ui) {
+				console.log('wifi.remove');
+				$('#wifi').remove();			// Dump the page from memory
+			});
+	
+		</script>
+
+		
+		<header data-role="header" data-position="fixed">
+			
+			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Apps</a>
+			
+			<h1>Wifi Configuration</h1>
+			
+		</header>
+		
+		<section data-role="content">
+			
+			<div class="wifi-config">
+				
+				<h3>Choose Network</h3>
+				
+				<div id="network_list">
+
+					<!--
+					<a href="#password" class="network" data-role="button" data-icon="check" data-rel="popup">My Home Network</a>
+					<a href="#password" class="network" data-role="button" data-icon="check" data-rel="popup">BigPond987654</a>
+					<a href="#password" class="network active" data-role="button" data-icon="check" data-rel="popup">War Driving</a>
+					-->
+
+				</div>
+				
+			</div>
+			
+		</section>
+
+		<div data-role="popup" id="password" data-overlay-theme="a" data-theme="a" style="max-width:400px;" class="ui-corner-all">
+			<div data-role="header" data-theme="a" class="ui-corner-top">
+				<h1>Join network?</h1>
+			</div>
+			<div data-role="content" data-theme="a" class="ui-corner-bottom ui-content">
+				<p style="color: #000;" id="askname">Are you sure you want to join</p>
+				<p style="color: #000;">If successful, Holiday will no longer be visible on this network.</p>
+				<form id="passform">
+					<h3>Password Required</h3>
+					<label for="pw" class="ui-hidden-accessible">Password:</label>
+					<input type="password" name="pw" id="pw" placeholder="Password">
+				</form>
+				<a href="#" data-role="button" data-inline="true" data-rel="back" data-theme="c">Cancel</a>    
+				<a onclick="theApp.doJoin();" data-role="button" data-inline="true" data-rel="back" data-transition="flow" data-theme="b">Join</a>  
+			</div>
+		</div>
+		
+		<!--<div data-role="popup" id="password">
+			<div class="password">
+				<form>
+					<h3>Password</h3>
+					<label for="pw" class="ui-hidden-accessible">Password:</label>
+					<input type="password" name="pw" id="pw" placeholder="Password">
+					<a href="#" id="join" data-role="button">Join</a>
+				</form>
+			</div>
+		</div>-->
+		
+	</div>
+	<!-- /wifi -->
+		
+</body>
+</html>

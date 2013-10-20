@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Device Name</title>
+
+</head>
+
+<body>
+	
+	<div data-role="page" id="hostname" data-add-back-btn="true">
+		
+		<script src="hostname.js"></script>
+	
+		<script>
+			
+			// Start the App
+			function start_app() {
+				console.log("start_app")
+				theApp = new hostname(); // Instance an App
+				theApp.appStart(); // Start the App
+			}
+			
+			// Stop the App
+			function stop_app() {
+				console.log("stop_app");
+				theApp.appQuit();
+				$( document ).undelegate("#hostname", "pageinit", start_app);
+				$( document ).undelegate("#hostname", "pagebeforehide", stop_app );
+			}
+	
+			console.log("Location #hostname");
+			
+			$( document ).delegate("#hostname", "pageinit", start_app);
+			$( document ).delegate("#hostname", "pagebeforehide", stop_app);
+
+			// Must add this little bit of stuff to every app so it correctly clears itself from the cache
+			$( '#hostname' ).on("pagehide", function(event, ui) {
+				console.log('hostname.remove');
+				$('#hostname').remove();			// Dump the page from memory
+			});
+	
+		</script>
+
+		
+		<header data-role="header" data-position="fixed">
+			
+			<a href="#apps" class="ui-icon-nodisc ui-icon-alt" data-role="button" data-icon="grid" data-iconpos="notext" data-theme="c" data-inline="true" data-rel="back">Apps</a>
+			
+			<h1>Device Name</h1>
+			
+		</header>
+		
+		<section data-role="content">
+			
+	    <input type="text" name="hostname" id="hostnametext" value="" placeholder="Set your device name here…" />
+	    <a href="#" id="setbutton" class="ui-btn ui-btn-inline ui-corner-all ui-icon-check ui-btn-icon-right">Set</a>
+						
+			<p>Every Holiday can be given a unique name, but you can't have two Holidays with the same name.</p>
+			
+		</section>
+		
+	</div>
+	<!-- /hostname -->
+		
+</body>
+</html>
