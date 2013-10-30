@@ -9,8 +9,9 @@ responsive for things that need closer to hardware responsiveness.
 Also allows you to simulate a multi-Holiday display by aggregating
 the display of multiple Holiday instances if required.
 """
-
+import sys
 import optparse
+import math
 import pygame
 from holiday import HolidayRemote
 
@@ -48,6 +49,11 @@ class BaseOptParser(optparse.OptionParser):
 
         self.add_option('', '--spacing', dest='spacing',
                         help="Spacing between strings, in pixels. Overrides dynamic even spacing",
+                        type="int")
+
+        self.add_option('', '--switchback', dest='switchback',
+                        help="'Switchback' strings, make a single string display like its "
+                        "more than one every m globes",
                         type="int")
         pass
 
@@ -107,7 +113,17 @@ class SimRunner(object):
             self.HolidayList.append( HolidayRemote() )
             pass
 
-        if not self.options.spacing:
+        if self.options.switchback:
+            self.bulbs_per_piece = self.options.switchback
+            self.num_pieces = int(math.ceil( float(self.num_bulbs) / self.options.switchback))
+            pass
+        else:
+            self.bulbs_per_piece = self.num_bulbs
+            self.num_pieces = 1
+
+            pass
+
+        if not self.options.spacing and not self.options.switchback:
             if self.numstrings > 1:
                 if self.options.orientation == 'vertical':
                     self.spacer_width = ((self.screen_x - (2*self.gutter_width)) / self.numstrings) - self.bulb_diam
@@ -119,11 +135,13 @@ class SimRunner(object):
                 self.spacer_width = 0
                 pass
             pass
-        else:
+        elif self.options.spacing:
             self.spacer_width = self.options.spacing
             pass
-        print "spacer:", self.spacer_width
-            
+        else:
+            self.spacer_width = 2 * self.bulb_diam
+            pass
+        
         pygame.init()
         # Default font to use
         self.fontsize = 24
@@ -133,7 +151,6 @@ class SimRunner(object):
         self.start_x = 0 + self.gutter_width
         self.start_y = (3 * self.myFont.get_height())
         
-        # FIXME: Depends on orientation
         if self.options.orientation == 'vertical':
             self.string_length = self.screen_y - self.start_y - self.gutter_width
         elif self.options.orientation == 'horizontal':
@@ -172,7 +189,8 @@ class SimRunner(object):
             
             # Draw the Holiday strings
             self.draw_strings(screen)
-
+            #sys.exit(1)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     mainloop = False
@@ -223,62 +241,95 @@ class SimRunner(object):
         Draw the Holiday strings on the screen
         """
         # Figure out screen dimensions and place the strings accordingly
+        offset_per_bulb = (self.string_length-(
+                self.string_header+self.string_footer)) / self.bulbs_per_piece
 
         for i, hol in enumerate(self.HolidayList):
 
             if self.options.orientation == 'vertical':
-                xpos = self.start_x + (i*(self.bulb_diam + self.spacer_width))
+                for piece in range(self.num_pieces):
+                    string_offset = self.start_x + ( i*(
+                            self.num_pieces*(self.bulb_diam+self.spacer_width)
+                            )) #+ i*self.spacer_width
+                    xpos = string_offset + piece*(self.bulb_diam + self.spacer_width)
 
-                pygame.draw.line(screen, self.string_color,
-                                 (xpos, self.start_y),
-                                 (xpos, self.start_y + self.string_length),
-                                 self.string_width)
+                    pygame.draw.line(screen, self.string_color,
+                                     (xpos, self.start_y),
+                                     (xpos, self.start_y + self.string_length),
+                                     self.string_width)
 
-                # Label the string with its number
-                screen.blit(self.myFont.render("%d" % i, True, (255,255,255)),
-                            (xpos - self.bulb_diam/2, self.start_y + self.string_length + self.bulb_diam))
+                    # Label the string with its number
+                    if piece == 0:
+                        screen.blit(self.myFont.render("%d" % i, True, (255,255,255)),
+                                    (xpos - self.bulb_diam/2, self.start_y + self.string_length + self.bulb_diam))
+                        pass
 
-                # Draw the lights
-                for j in range(0, hol.NUM_GLOBES):
-                    bulb_y = self.start_y + self.string_header + (
-                        j * (self.string_length -
-                             (self.string_header+self.string_footer)) / self.num_bulbs
-                        )
-                    # Fetch the globe color for globe j
-                    r, g, b = hol.globes[j]
-                    pygame.draw.circle(screen,
-                                       pygame.Color(r, g, b),
-                                       (xpos, bulb_y),
-                                       self.bulb_diam / 2,
-                                       )
+                    # Draw the lights
+                    for m, j in enumerate(range(piece * self.bulbs_per_piece,
+                                                min((piece+1)*self.bulbs_per_piece, hol.NUM_GLOBES)
+                                                )
+                                          ):
+                        # If even, start at the top and go down
+                        if not piece % 2:
+                            bulb_y = self.start_y + self.string_header + (m * offset_per_bulb)
+
+                        # if odd, go from bottom to top
+                        else:
+                            bulb_y = self.start_y + self.string_header + ( (self.bulbs_per_piece-1-m) * offset_per_bulb)
+                            pass
+
+                        # Fetch the globe color for globe j
+                        r, g, b = hol.globes[j]
+                        pygame.draw.circle(screen,
+                                           pygame.Color(r, g, b),
+                                           (xpos, bulb_y),
+                                           self.bulb_diam / 2,
+                                           )
+                        pass
                     pass
                 pass
 
             elif self.options.orientation == 'horizontal':
-                ypos = self.start_y + (i*(self.bulb_diam + self.spacer_width))
-                
-                pygame.draw.line(screen, self.string_color,
-                                 (self.start_x, ypos),
-                                 (self.start_x + self.string_length, ypos),
-                                 self.string_width)
-                            
-                # Label the string with its number
-                screen.blit(self.myFont.render("%d" % i, True, (255,255,255)),
-                            (self.bulb_diam, ypos-self.bulb_diam))
 
-                # Draw the lights
-                for j in range(0, hol.NUM_GLOBES):
-                    bulb_x = self.start_x + self.string_header + (
-                        j * (self.string_length -
-                             (self.string_header+self.string_footer)) / self.num_bulbs
-                        )
-                    # Fetch the globe color for globe j
-                    r, g, b = hol.globes[j]
-                    pygame.draw.circle(screen,
-                                       pygame.Color(r, g, b),
-                                       (bulb_x, ypos),
-                                       self.bulb_diam / 2,
-                                       )
+                for piece in range(self.num_pieces):
+                    string_offset = self.start_y + ( i*(
+                            self.num_pieces*(self.bulb_diam+self.spacer_width)
+                            )) #+ i*self.spacer_width
+
+                    ypos = string_offset + piece*(self.bulb_diam + self.spacer_width)
+                
+                    pygame.draw.line(screen, self.string_color,
+                                     (self.start_x, ypos),
+                                     (self.start_x + self.string_length, ypos),
+                                     self.string_width)
+                            
+                    # Label the string with its number
+                    if piece == 0:
+                        screen.blit(self.myFont.render("%d" % i, True, (255,255,255)),
+                                    (self.bulb_diam, ypos-self.bulb_diam))
+                        pass
+
+                    # Draw the lights
+                    for m, j in enumerate(range(piece * self.bulbs_per_piece,
+                                                min((piece+1)*self.bulbs_per_piece, hol.NUM_GLOBES)
+                                                )
+                                          ):
+                        # If even, start at the top and go down
+                        if not piece % 2:
+                            bulb_x = self.start_x + self.string_header + (m * offset_per_bulb)
+                        # if odd, go from bottom to top
+                        else:
+                            bulb_x = self.start_x + self.string_header + ( (self.bulbs_per_piece-1-m) * offset_per_bulb)
+                            pass
+
+                        # Fetch the globe color for globe j
+                        r, g, b = hol.globes[j]
+                        pygame.draw.circle(screen,
+                                           pygame.Color(r, g, b),
+                                           (bulb_x, ypos),
+                                           self.bulb_diam / 2,
+                                           )
+                        pass
                     pass
                 pass
             pass
