@@ -85,7 +85,7 @@ class SimRunner(object):
     bulb_diam = 10
 
     # Colour of the 'string' between the bulbs
-    string_color = pygame.Color(255,255,255)
+    string_color = pygame.Color(40,40,40)
 
     # width of the 'string' line, in px
     string_width = 1
