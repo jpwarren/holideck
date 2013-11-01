@@ -7,6 +7,7 @@ import optparse
 import time
 import pygame
 import sys
+import math
 
 from secretapi.holidaysecretapi import HolidaySecretAPI
 
@@ -155,11 +156,14 @@ if __name__ == '__main__':
 
     options, args = optparse.parseOptions()
 
-    height = options.numstrings
+
     
     if options.switchback:
         width = options.switchback
+        pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / width))        
+        height = pieces * options.numstrings
     else:
+        height = options.numstrings
         width = HolidaySecretAPI.NUM_GLOBES
 
     if options.listfonts:
@@ -195,9 +199,15 @@ if __name__ == '__main__':
             render_glist.append(new_list)
             pass
         #print "renderlist:", render_glist
-        render_to_hols(render_glist, hols, width, height, orientation='horizontal')
+        render_to_hols(render_glist, hols, width, height,
+                       orientation='horizontal',
+                       switchback=options.switchback)
         offset += 1
         if offset > len(glist[0]):
             offset = 0
             pass
+
+        if not options.animate:
+            sys.exit(0)
         time.sleep(options.anim_sleep)
+

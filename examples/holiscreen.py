@@ -189,25 +189,28 @@ def render_to_hols(globelists, hols, width, height,
         basenum = (l%pieces) * orientsize
             
         for i, values in enumerate(line):
+            r, g, b = values
 
             # Which holiday are we talking to?
             if switchback:
-                holid = l*orientsize / (pieces * switchback)
-            else:
                 if orientation == 'vertical':
-                    holid = l
+                    holid = l*orientsize / (pieces * switchback)
                 else:
-                    holid = l
+                    holid = l*orientsize / (pieces * switchback)
+            else:
+                holid = l
                 pass
             hol = hols[holid]
 
-            r, g, b = values
             if not (l % pieces) % 2:
                 globe_idx = basenum + i
             else:
                 globe_idx = basenum + (orientsize-i) - 1
                 pass
             holglobes[holid][globe_idx] = [r,g,b]
+
+            #print "line: %d, holid: %d, globe: %d, val: (%d, %d, %d)" % (l, holid, globe_idx, r,g,b)
+
             pass
         pass
 
