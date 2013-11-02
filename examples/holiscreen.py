@@ -11,6 +11,8 @@ import Image
 import math
 import time
 import numpy
+import sys
+import logging
 
 from secretapi.holidaysecretapi import HolidaySecretAPI
 
@@ -19,6 +21,12 @@ DEFAULT_HEIGHT = HolidaySecretAPI.NUM_GLOBES
 
 # Width of display == number of strings we want to use
 DEFAULT_WIDTH = HolidaySecretAPI.NUM_GLOBES
+
+log = logging.getLogger(sys.argv[0])
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s [%(levelname)s]: %(message)s"))
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
 
 def image_to_globes(img, width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT):
     """
@@ -200,7 +208,11 @@ def render_to_hols(globelists, hols, width, height,
             else:
                 holid = l
                 pass
-            hol = hols[holid]
+            try:
+                hol = hols[holid]
+            except IndexError:
+                log.error("Not enough Holidays for number of screen lines. Need at least %d." % (holid+1,))
+                sys.exit(1)
 
             if not (l % pieces) % 2:
                 globe_idx = basenum + i

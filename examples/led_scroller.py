@@ -52,7 +52,7 @@ class LEDScrollerOptions(optparse.OptionParser):
                         type="string", default="couriernew")
 
         self.add_option('', '--fontsize', dest='fontsize',
-                        help="Size of the font, in points [%default]",
+                        help="Size of the font, in pixels [%default]",
                         type="int", default="7")
 
         self.add_option('', '--color', dest='color',
@@ -83,26 +83,6 @@ class LEDScrollerOptions(optparse.OptionParser):
     def postOptions(self):
         pass
 
-def to_rgb( norm_rgba, mask=(0,0,0) ):
-    """
-    Convert normalized RGBA color to flat RGB color.
-
-    Default is for a black background.
-    Annoyingly, pygame doesn't seem to have this feature in its
-    Color module for some reason. Sadface.
-    """
-    #print norm_rgba
-    r, g, b, a = norm_rgba
-    bg_r, bg_g, bg_b = mask
-
-    # Convert to target color
-    # http://stackoverflow.com/questions/2049230/convert-rgba-color-to-rgb
-    tr = int((((1-a)*r) + (a*bg_r)) * 255)
-    tg = int((((1-a)*g) + (a*bg_g)) * 255)
-    tb = int((((1-a)*b) + (a*bg_b)) * 255)
-
-    return (tr, tg, tb)
-    
 def text_to_globes(text, width, height,
                    color=(255,255,255),
                    offset_left=0):
@@ -125,19 +105,24 @@ def text_to_globes(text, width, height,
     color = pygame.Color(color)
 
     surface = font.render(text, True, color, (0,0,0) )
+
     globelists = []
 
     # Now fetch the pixels as an array
     pa = pygame.PixelArray(surface)
-    for i in range(min(height, len(pa[0]))):
+    for i in range(len(pa[0])):
         globes = []
-
-        # First, grab the pixels in the window
         pixels = pa[:,i]
-        for px in pixels:
-
+        pixvals = [ pa.surface.unmap_rgb(x) for x in pixels ]
+        # Check to see if this is a blank line, i.e.
+        # all pixels are black. Ignore the line if this is the case.
+        # We don't want to waste lines on blanks.
+        if pixvals == [ (0,0,0,255) ] * len(pixvals):
+            #print "skipping blank line %d" % i
+            continue
+        
+        for (r, g, b, a) in pixvals:
             # Convert from a surface color int to RGBA values
-            (r,g,b,a) = pa.surface.unmap_rgb(px)
             globes.append( (r,g,b) )
             pass
 
