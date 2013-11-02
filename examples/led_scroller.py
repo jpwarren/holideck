@@ -51,6 +51,10 @@ class LEDScrollerOptions(optparse.OptionParser):
                         help="Name of the font to use. [%default]",
                         type="string", default="couriernew")
 
+        self.add_option('', '--antialias', dest='antialias',
+                        help="Use anti-aliasing for font rendering. [%default]",
+                        action="store_true", default=False)
+        
         self.add_option('', '--fontsize', dest='fontsize',
                         help="Size of the font, in pixels [%default]",
                         type="int", default="7")
@@ -104,7 +108,7 @@ def text_to_globes(text, width, height,
     font = pygame.font.SysFont(options.fontname, options.fontsize)
     color = pygame.Color(color)
 
-    surface = font.render(text, True, color, (0,0,0) )
+    surface = font.render(text, options.antialias, color, (0,0,0) )
 
     globelists = []
 
@@ -140,8 +144,6 @@ if __name__ == '__main__':
     optparse = LEDScrollerOptions(usage=usage)
 
     options, args = optparse.parseOptions()
-
-
     
     if options.switchback:
         width = options.switchback
