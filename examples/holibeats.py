@@ -9,6 +9,7 @@ import math
 import numpy
 import scipy
 import time
+import datetime
 #from scipy.signal import kaiserord, lfilter, firwin, freqz
 
 from scipy import fft
@@ -69,7 +70,11 @@ def calc_samp_amp(sample):
     
     return result
 
-def send_blinken(hols, visdata, pieces=1, switchback=None, maxval=None, maxheight=None):
+def send_blinken(hols, visdata, pieces=1,
+                 switchback=None,
+                 maxval=None,
+                 maxheight=None,
+                 autorange=True):
     """
     Create a light pattern for a remote Holidays
     based on the values we receive.
@@ -79,6 +84,12 @@ def send_blinken(hols, visdata, pieces=1, switchback=None, maxval=None, maxheigh
     """
     #log.debug("numhols: %d, buckets: %d", len(hols), len(visdata))
     #log.debug("pieces: %d, sb: %d", pieces, switchback)
+
+    # Same bug as in holiscreen.py render_to_hols()
+    holglobes = []
+    for i in range(len(hols)):
+        holglobes.append( [[0x00,0x00,0x00]] * HolidaySecretAPI.NUM_GLOBES )
+        pass
 
     if maxheight is None:
         if switchback:
@@ -103,7 +114,7 @@ def send_blinken(hols, visdata, pieces=1, switchback=None, maxval=None, maxheigh
             pass
         
         # Normalize value based on maxval == maxheight
-        if maxval:
+        if autorange and maxval:
             value = value/maxval * maxheight
             pass
 
@@ -133,32 +144,35 @@ def send_blinken(hols, visdata, pieces=1, switchback=None, maxval=None, maxheigh
             # Set the globe colour based on how far it
             # is from the maximum value
             if (j/maxheight) < 0.4:
-                r, g, b = 50, 180, 50
+                r, g, b = 0, 200, 0
             elif (j/maxheight) < 0.7:
                 r, g, b = 222, 215, 26
             else:
-                r, g, b = 200, 50, 50
+                r, g, b = 240, 50, 50
                 pass
-            hols[holid].setglobe(globe_idx, r, g, b)
+            holglobes[holid][globe_idx] = [r,g,b]
             pass
         
         # Blank globes above the value in this bucket
-        for j in range(value, int(maxheight) + 1):
+        for j in range(value, int(maxheight)):
             if not (i % pieces) % 2:
                 globe_idx = basenum + j
             else:
                 globe_idx = basenum + (switchback-j) - 1
                 pass
             try:
-                hols[holid].setglobe(globe_idx, 0, 0, 0)
+                holglobes[holid][globe_idx] = [0,0,0]
             except IndexError:
-                log.error("Failed on holid %d", holid)
+                log.error("Failed on holid %d, globe_idx %d", holid, globe_idx)
                 raise
         pass
 
     # Render all the Holidays
-    for hol in hols:
+    for i, hol in enumerate(hols):
+        hol.set_pattern( holglobes[i] )
         hol.render()
+        pass
+    pass
 
 class HolibeatOptions(optparse.OptionParser):
     """
@@ -195,6 +209,14 @@ class HolibeatOptions(optparse.OptionParser):
                         "more than one every SWITCHBACK globes",
                         type="int")
 
+        self.add_option('', '--autorange', dest='autorange',
+                        help="Dynamically set range of display based on max value",
+                        action='store_true', default=True)
+
+        self.add_option('', '--no-autorange', dest='autorange',
+                        help="Disable auto-ranging display",
+                        action='store_false')
+        
         self.add_option('', '--maxheight', dest='maxheight',
                         help="Manually set the maximum height value for buckets",
                         type="float")
@@ -298,6 +320,7 @@ if __name__ == '__main__':
 
     # Used for auto-ranging of display
     maxval = 0
+    maxtime = datetime.datetime.now()
 
     # Time limiting bits to slow down the UDP firehose
     # This is stupid, but functional. Should be event driven, probably.
@@ -382,17 +405,33 @@ if __name__ == '__main__':
 
         # scale bucket 0 down, because bass always seems to dominate the spectrum
         # particularly for anything not classical music.
-        visdata[0] = visdata[0] / 1.5
+        visdata[0] = visdata[0] / 1.8
 
         for i in range(0, numbuckets):
             # Update auto-ranging information
             if visdata[i] > maxval:
                 maxval = visdata[i]
+                #log.debug("maxval reset: %f", maxval)
+                maxtime = datetime.datetime.now()
                 pass
             pass
 
+        # If the maxval was set more than n seconds ago, start
+        # reducing the maxval gradually by x% per loop until
+        # we have to set the max again
+        if datetime.datetime.now() - maxtime > datetime.timedelta(seconds=2):
+            #log.debug("maxval %f is old. decreasing...", maxval)
+            maxval = maxval - (maxval * 0.05)
+            if maxval < 0:
+                maxval = 0
+            pass
+        
         # Send data to Holidays
-        send_blinken(hols, visdata, pieces, options.switchback, maxval, options.maxheight)
+        send_blinken(hols, visdata, pieces,
+                     switchback=options.switchback,
+                     maxval=maxval,
+                     maxheight=options.maxheight,
+                     autorange=options.autorange)
         pass
 
     # Wait for next timetick
