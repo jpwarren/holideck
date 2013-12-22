@@ -221,6 +221,10 @@ class HolibeatOptions(optparse.OptionParser):
                         help="Manually set the maximum height value for buckets",
                         type="float")
         
+        self.add_option('', '--quietseconds', dest='quiet_seconds',
+                        help="Period of relative quiet to reset autoranging",
+                        type="int", default=5)
+        
     def parseOptions(self):
         """
         Emulate twistedmatrix options parser API
@@ -419,9 +423,9 @@ if __name__ == '__main__':
         # If the maxval was set more than n seconds ago, start
         # reducing the maxval gradually by x% per loop until
         # we have to set the max again
-        if datetime.datetime.now() - maxtime > datetime.timedelta(seconds=2):
+        if datetime.datetime.now() - maxtime > datetime.timedelta(seconds=options.quiet_seconds):
             #log.debug("maxval %f is old. decreasing...", maxval)
-            maxval = maxval - (maxval * 0.05)
+            maxval = maxval - (maxval * 0.01)
             if maxval < 0:
                 maxval = 0
             pass
