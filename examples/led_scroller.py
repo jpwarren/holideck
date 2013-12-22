@@ -44,7 +44,7 @@ class LEDScrollerOptions(optparse.OptionParser):
 
         self.add_option('', '--switchback', dest='switchback',
                         help="'Switchback' strings, make a single string display like its "
-                        "more than one every m globes",
+                        "more than one every SWITCHBACK globes",
                         type="int")
 
         self.add_option('', '--font', dest='fontname',
@@ -85,6 +85,9 @@ class LEDScrollerOptions(optparse.OptionParser):
         return self.options, self.args
 
     def postOptions(self):
+        if len(self.args) < 1:
+            self.error("Specify address and port of remote Holiday(s)")
+            pass
         pass
 
 def text_to_globes(text, width, height,
@@ -140,7 +143,7 @@ def text_to_globes(text, width, height,
 
 if __name__ == '__main__':
 
-    usage = "Usage: %prog [options]"
+    usage = "Usage: %prog [options] <hol_addr:hol_port> [<hol_addr:hol_port> ... ]"
     optparse = LEDScrollerOptions(usage=usage)
 
     options, args = optparse.parseOptions()
@@ -158,9 +161,15 @@ if __name__ == '__main__':
         sys.exit(0)
 
     hols = []
-    for i in range(options.numstrings):
-        hols.append(HolidaySecretAPI(port=options.portstart+i))
-        pass
+    if len(args) > 1:
+        for arg in args:
+            hol_addr, hol_port = arg.split(':')
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+    else:
+        hol_addr, hol_port = args[0].split(':')
+        for i in range(options.numstrings):
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            pass
 
     # The text to render is passed in from stdin
     text = sys.stdin.read().rstrip()

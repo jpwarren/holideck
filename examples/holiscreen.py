@@ -140,12 +140,12 @@ class HoliscreenOptions(optparse.OptionParser):
         return self.options, self.args
 
     def postOptions(self):
-        if not self.options.imgfile and len(self.args) == 0:
-            self.error("Image filename not given.")
+        if len(self.args) < 1:
+            self.error("Specify address and port of remote Holiday(s)")
             pass
 
         if not self.options.imgfile:
-            self.options.imgfile = self.args[0]
+            self.error("Image filename not given.")
             pass
         pass
 
@@ -157,7 +157,9 @@ def render_image(img, hols, width, height,
 
     @param switchback: How many globes per piece of a switchback
     """
+    #log.debug("w x h: %d x %d", width, height)
     globelists = image_to_globes(img, width, height)
+    #log.debug("len globelists: %d", len(globelists))
     render_to_hols(globelists, hols, width, height, orientation, switchback)
 
 def render_to_hols(globelists, hols, width, height,
@@ -192,34 +194,57 @@ def render_to_hols(globelists, hols, width, height,
     # to holiday 2. In switchback mode, the first n lists go to holiday 0.
     # In horizontal mode, the first row is spread between holidays, depending
     # on switchback.
+    #log.debug("globelist len: %d", len(globelists))
     for l, line in enumerate(globelists):
-
-        basenum = (l%pieces) * orientsize
             
         for i, values in enumerate(line):
             r, g, b = values
 
+            #log.debug("os: %d, pieces: %d, sb: %s, l: %d, i: %d", orientsize, pieces, switchback, l, i)
+
             # Which holiday are we talking to?
-            if switchback:
-                if orientation == 'vertical':
+            if orientation == 'horizontal':
+                basenum = (l%pieces) * orientsize
+
+                if switchback:
                     holid = l*orientsize / (pieces * switchback)
                 else:
-                    holid = l*orientsize / (pieces * switchback)
+                    holid = l
+                
+                if not (l % pieces) % 2:
+                    globe_idx = basenum + i
+                else:
+                    globe_idx = basenum + (orientsize-i) - 1
+                    pass
+
             else:
-                holid = l
-                pass
+                basenum = (i % pieces) * orientsize
+
+                if switchback:
+                    holid = i / pieces
+                    #log.debug("basenum: %d", basenum)
+                else:
+                    holid = i
+                    basenum = 0
+                    
+                if not (i % pieces) % 2:
+                    globe_idx = basenum + l
+                else:
+                    globe_idx = basenum + (orientsize-l) - 1
+                    pass
+                
             try:
+                #log.debug("holid: %d, globeidx: %d", holid, globe_idx)
                 hol = hols[holid]
             except IndexError:
                 log.error("Not enough Holidays for number of screen lines. Need at least %d." % (holid+1,))
                 sys.exit(1)
 
-            if not (l % pieces) % 2:
-                globe_idx = basenum + i
-            else:
-                globe_idx = basenum + (orientsize-i) - 1
-                pass
-            holglobes[holid][globe_idx] = [r,g,b]
+            try:
+                holglobes[holid][globe_idx] = [r,g,b]
+            except IndexError:
+                log.debug("Error at holid %d, globeidx %d", holid, globe_idx)
+                raise
 
             #print "line: %d, holid: %d, globe: %d, val: (%d, %d, %d)" % (l, holid, globe_idx, r,g,b)
 
@@ -236,17 +261,23 @@ def render_to_hols(globelists, hols, width, height,
     
 if __name__ == '__main__':
 
-    usage = "Usage: %prog [options] <filename>"
+    usage = "Usage: %prog [options] <hol_addr:hol_port> [<hol_addr:hol_port> ... ]"
     optparse = HoliscreenOptions(usage=usage)
     options, args = optparse.parseOptions()
     hols = []
-    for i in range(options.numstrings):
-        hols.append(HolidaySecretAPI(port=options.portstart+i))
+    if len(args) > 1:
+        for arg in args:
+            hol_addr, hol_port = arg.split(':')
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+    else:
+        hol_addr, hol_port = args[0].split(':')
+        for i in range(options.numstrings):
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            pass
         pass
-
+    
     img = Image.open(options.imgfile)
 
-    # FIXME: Swap height and width for horizontal orientation
     if options.switchback:
         if options.orientation == 'vertical':
             height = options.switchback
