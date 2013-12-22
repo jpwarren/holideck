@@ -188,6 +188,8 @@ if __name__ == '__main__':
         render_glist = []
         for hol_list in glist:
             new_list = hol_list[offset:width+offset]
+
+            # FIXME: Ability to scroll in both directions, via a flag
             # wraparound
             if len(new_list) < width:
                 new_list.extend(hol_list[:(width-len(new_list))])

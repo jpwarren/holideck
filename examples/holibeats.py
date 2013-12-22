@@ -5,6 +5,7 @@
 import sys
 import pyaudio
 import audioop
+import math
 import numpy
 import scipy
 import time
@@ -20,6 +21,14 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
 BUFSIZE = 2048
+
+import logging
+log = logging.getLogger(sys.argv[0])
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s [%(levelname)s]: %(message)s"))
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
+
 
 def list_devices():
     # List all audio input devices
@@ -60,40 +69,96 @@ def calc_samp_amp(sample):
     
     return result
 
-def send_blinken(hol, value, maxval=None):
+def send_blinken(hols, visdata, pieces=1, switchback=None, maxval=None, maxheight=None):
     """
-    Create a light pattern for a remote Holiday
-    based on the value we receive.
+    Create a light pattern for a remote Holidays
+    based on the values we receive.
 
-    If maxval is supplied, scale value as proportion of
+    If maxval is supplied, scale values as proportion of
     maxval, so the display auto-ranges.
     """
-    # Normalize value based on maxval == 48 globes
-    if maxval:
-        value = value/maxval * 48
-        pass
-    
-    value = int(value)
+    #log.debug("numhols: %d, buckets: %d", len(hols), len(visdata))
+    #log.debug("pieces: %d, sb: %d", pieces, switchback)
 
-    # Clip values greater than 50
-    if value > 50:
-        value = 50
-        pass
-
-    for i in range(0, value):
-        if i < 25:
-            hol.setglobe(i, 50, 180, 50)
-        elif i < 40:
-            hol.setglobe(i, 222, 215, 26)
+    if maxheight is None:
+        if switchback:
+            maxheight = float(switchback)
         else:
-            hol.setglobe(i, 200, 50, 50)
-        pass
-    
-    for i in range(value, 51):
-        hol.setglobe(i, 0, 0, 0)
+            maxheight = float(HolidaySecretAPI.NUM_GLOBES)
+            pass
         pass
 
-    hol.render()
+    # Only use the first m values from visdata, based on how many we can display
+    m = len(hols) * pieces
+    
+    for i, value in enumerate(visdata[:m]):
+        holid = int(i / pieces)
+
+        # Set the base globe index for each bucket in switchback mode
+        if switchback:
+            basenum = (i % pieces) * switchback
+        else:
+            # With no switchback, the bucket basenum is globe 0
+            basenum = 0
+            pass
+        
+        # Normalize value based on maxval == maxheight
+        if maxval:
+            value = value/maxval * maxheight
+            pass
+
+        value = int(value)
+
+        # Clip values greater than maxheight
+        if value > maxheight:
+            value = int(maxheight)
+            pass
+
+        # Set the globes for the holiday for this bucket
+        # using switchback if required
+        # Use different colours for different height
+        # cutoffs, so low values are green, middle yellow/orange
+        # and high values are red.
+        
+        for j in range(0, value):
+
+            # Set the globe index, reversing for switchback mode
+            # and using the basenum offset for each switchback bucket 
+            if not (i % pieces) % 2:
+                globe_idx = basenum + j
+            else:
+                globe_idx = basenum + (switchback-j) - 1
+                pass
+
+            # Set the globe colour based on how far it
+            # is from the maximum value
+            if (j/maxheight) < 0.4:
+                r, g, b = 50, 180, 50
+            elif (j/maxheight) < 0.7:
+                r, g, b = 222, 215, 26
+            else:
+                r, g, b = 200, 50, 50
+                pass
+            hols[holid].setglobe(globe_idx, r, g, b)
+            pass
+        
+        # Blank globes above the value in this bucket
+        for j in range(value, int(maxheight) + 1):
+            if not (i % pieces) % 2:
+                globe_idx = basenum + j
+            else:
+                globe_idx = basenum + (switchback-j) - 1
+                pass
+            try:
+                hols[holid].setglobe(globe_idx, 0, 0, 0)
+            except IndexError:
+                log.error("Failed on holid %d", holid)
+                raise
+        pass
+
+    # Render all the Holidays
+    for hol in hols:
+        hol.render()
 
 class HolibeatOptions(optparse.OptionParser):
     """
@@ -113,6 +178,10 @@ class HolibeatOptions(optparse.OptionParser):
                         help="Port number to start at for UDP listeners [%default]",
                         type="int", default=9988)
 
+        self.add_option('-b', '--buckets', dest='numbuckets',
+                        help="Number of frequency bands (buckets) for display",
+                        type="int")
+        
         self.add_option('-m', '--mode', dest='mode',
                         help="Frequency mode: amplitude or power [%default]",
                         type="choice", choices=['amp', 'power'], default='amp')
@@ -120,6 +189,15 @@ class HolibeatOptions(optparse.OptionParser):
         self.add_option('-f', '--fps', dest='fps',
                         help="Frames per second, used to slow down data sending",
                         type="int", default=30)
+
+        self.add_option('', '--switchback', dest='switchback',
+                        help="'Switchback' strings, make a single string display like its "
+                        "more than one every SWITCHBACK globes",
+                        type="int")
+
+        self.add_option('', '--maxheight', dest='maxheight',
+                        help="Manually set the maximum height value for buckets",
+                        type="float")
         
     def parseOptions(self):
         """
@@ -134,6 +212,9 @@ class HolibeatOptions(optparse.OptionParser):
         return self.options, self.args
 
     def postOptions(self):
+        if len(self.args) < 1:
+            self.error("Specify address and port of remote Holiday(s)")
+            pass
         pass
 
 def chunks(l, n):
@@ -146,7 +227,10 @@ def chunks(l, n):
 
 if __name__ == '__main__':
     #list_devices()
-    optparse = HolibeatOptions()
+
+    usage = "Usage: %prog [options] <hol_addr:hol_port> [<hol_addr:hol_port> ... ]"
+    
+    optparse = HolibeatOptions(usage=usage)
     options, args = optparse.parseOptions()
     
     pa = pyaudio.PyAudio()
@@ -166,11 +250,33 @@ if __name__ == '__main__':
     # different buckets.
     window = numpy.hamming(BUFSIZE*2)
 
-    hols = []
-    for i in range(0, options.numstrings):
-        hols.append(HolidaySecretAPI(port=options.portstart+i))
+    if options.switchback:
+        pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / options.switchback))
+        numbuckets = pieces * options.numstrings
+    else:
+        pieces = 1
+        numbuckets = options.numstrings
         pass
 
+    # Allow manual override of number of buckets
+    # Mostly used to clip the higher, less interesting bands, so we visualise the lower
+    # bands with more granularity
+    if options.numbuckets:
+        numbuckets = options.numbuckets
+        pass
+
+    hols = []
+
+    if len(args) > 1:
+        for arg in args:
+            hol_addr, hol_port = arg.split(':')
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+    else:
+        hol_addr, hol_port = args[0].split(':')
+        for i in range(options.numstrings):
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            pass
+    
     # Build the list of cutoff frequences as powers of 10
     cutoffs = []
     exp = [2, 3, 4]
@@ -188,8 +294,7 @@ if __name__ == '__main__':
     
     # chunk cutoffs based on number of strings,
     # and use the max freq val of the chunk for our new cutoff
-    cutoffs = [ max(c) for c in chunks(cutoffs, len(cutoffs)/options.numstrings) ]
-    #print cutoffs
+    cutoffs = [ max(c) for c in chunks(cutoffs, len(cutoffs)/numbuckets) ]
 
     # Used for auto-ranging of display
     maxval = 0
@@ -279,13 +384,15 @@ if __name__ == '__main__':
         # particularly for anything not classical music.
         visdata[0] = visdata[0] / 1.5
 
-        for i in range(0, options.numstrings):
+        for i in range(0, numbuckets):
             # Update auto-ranging information
             if visdata[i] > maxval:
                 maxval = visdata[i]
                 pass
-            send_blinken(hols[i], visdata[i], maxval)
             pass
+
+        # Send data to Holidays
+        send_blinken(hols, visdata, pieces, options.switchback, maxval, options.maxheight)
         pass
 
     # Wait for next timetick
