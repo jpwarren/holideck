@@ -80,10 +80,17 @@ def init_hol(hol):
     """
     for globeidx in range(0, HolidaySecretAPI.NUM_GLOBES):
         color = []
-        for i in range(0, 3):
-            color.append(random.randint(0, 130))
-            pass
+        # red
+        color.append(random.randint(0, 130))
+        #color.append(0)
+        # green
+        color.append(random.randint(0, 130))
+        # blue
+        color.append(random.randint(0, 130))
+        #color.append(0)
+
         r, g, b = color
+
         hol.setglobe(globeidx, r, g, b)
         pass
     hol.render()
@@ -123,8 +130,8 @@ def twinkle_holiday(hol,
             satstep = random.random() * satstep_max
             if random.randint(0, 1):
                 s += satstep
-                if s > 1.0:
-                    s = 1.0
+                if s > 0.8:
+                    s = 0.8
             else:
                 s -= satstep
                 # Make sure things stay bright and colorful!
@@ -140,8 +147,8 @@ def twinkle_holiday(hol,
                     v = 1.0
             else:
                 v -= valstep
-                if v < 0.0:
-                    v = 0.0
+                if v < 0.2:
+                    v = 0.2
                 pass
 
             #log.debug("end h s v: %f %f %f", h, s, v)

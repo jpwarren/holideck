@@ -48,11 +48,13 @@ if __name__ == '__main__':
 	CHANNELS = 2
 	RATE = 44100
 	INPUT_BLOCK_TIME = 0.02
-	BUFFER = 4096 #Seems to work... 
+	BUFFER = 1024 #Seems to work... 
 	
 	# How do we select the appropriate input device?
-	input_device = 0 #Built-in Microphone (seems good for OSX)
+	#input_device = 0 #Built-in Microphone (seems good for OSX)
 	#input_device = 3 # this seems to be correct for juno
+	input_device = 15 # Ubuntu default
+
 	
 	pa = pyaudio.PyAudio()     
 	
@@ -60,10 +62,10 @@ if __name__ == '__main__':
 			 channels = CHANNELS,
 			 rate = RATE,
 			 input = True,
-			 input_device_index = input_device,
+			 #input_device_index = input_device,
 			 frames_per_buffer = BUFFER)
 
- 	SCALE = 100 # Probably need to tweak this
+ 	SCALE = 300 # Probably need to tweak this
  	MAX_LIGHT = 50
 	errorcount = 0
 	print "Press Ctrl-C to quit"
