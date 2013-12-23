@@ -30,7 +30,6 @@ handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s [%(levelname)s]: %
 log.addHandler(handler)
 log.setLevel(logging.DEBUG)
 
-
 def list_devices():
     # List all audio input devices
     p = pyaudio.PyAudio()
@@ -74,7 +73,8 @@ def send_blinken(hols, visdata, pieces=1,
                  switchback=None,
                  maxval=None,
                  maxheight=None,
-                 autorange=True):
+                 autorange=True,
+                 colorscheme='default'):
     """
     Create a light pattern for a remote Holidays
     based on the values we receive.
@@ -143,13 +143,8 @@ def send_blinken(hols, visdata, pieces=1,
 
             # Set the globe colour based on how far it
             # is from the maximum value
-            if (j/maxheight) < 0.3:
-                r, g, b = 0, 200, 0 # green
-            elif (j/maxheight) < 0.7:
-                r, g, b = 220, 220, 00 # yellow
-            else:
-                r, g, b = 240, 10, 10 # red
-                pass
+            (r, g, b) = get_val_color( j/maxheight, colorscheme )
+            #log.debug("%d %d %d %d", globe_idx, r, g, b)
             holglobes[holid][globe_idx] = [r,g,b]
             pass
         
@@ -174,6 +169,38 @@ def send_blinken(hols, visdata, pieces=1,
         pass
     pass
 
+def get_val_color(val, scheme='default'):
+    """
+    Return the globe color based on the scheme we're using.
+
+    @param val: is a float value between 0.0 and 1.0
+    """
+    if scheme == 'default':
+        if val < 0.3:
+            r, g, b = 0, 200, 0 # green
+        elif val < 0.7:
+            r, g, b = 220, 220, 00 # yellow
+        else:
+            r, g, b = 240, 10, 10 # red
+        pass
+
+    elif scheme == 'blue':
+        r, g, b = 0, 0, 30 + 225 * val
+    elif scheme == 'red':
+        r, g, b = 30 + 225 * val, 0, 0
+    elif scheme == 'green':
+        r, g, b = 0, 30 + 225 * val, 0
+
+    elif scheme == 'yellow':
+        r, g, b = 30 + 225 * val, 30 + 225 * val, 0
+
+        pass
+
+    r = int(r)
+    g = int(g)
+    b = int(b)
+    return (r, g, b)
+
 class HolibeatOptions(optparse.OptionParser):
     """
     Command-line options parser
@@ -192,6 +219,11 @@ class HolibeatOptions(optparse.OptionParser):
                         help="Port number to start at for UDP listeners [%default]",
                         type="int", default=9988)
 
+        self.add_option('-c', '--colorscheme', dest='colorscheme',
+                        help=" [%default]",
+                        type="choice", choices = ['default', 'blue', 'green', 'red', 'yellow'],
+                        default='default')
+        
         self.add_option('-b', '--buckets', dest='numbuckets',
                         help="Number of frequency bands (buckets) for display",
                         type="int")
@@ -224,6 +256,7 @@ class HolibeatOptions(optparse.OptionParser):
         self.add_option('', '--quietseconds', dest='quiet_seconds',
                         help="Period of relative quiet to reset autoranging [%default]",
                         type="int", default=5)
+
         
     def parseOptions(self):
         """
@@ -435,7 +468,8 @@ if __name__ == '__main__':
                      switchback=options.switchback,
                      maxval=maxval,
                      maxheight=options.maxheight,
-                     autorange=options.autorange)
+                     autorange=options.autorange,
+                     colorscheme=options.colorscheme)
         pass
 
     # Wait for next timetick
