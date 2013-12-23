@@ -143,12 +143,12 @@ def send_blinken(hols, visdata, pieces=1,
 
             # Set the globe colour based on how far it
             # is from the maximum value
-            if (j/maxheight) < 0.4:
-                r, g, b = 0, 200, 0
+            if (j/maxheight) < 0.3:
+                r, g, b = 0, 200, 0 # green
             elif (j/maxheight) < 0.7:
-                r, g, b = 222, 215, 26
+                r, g, b = 220, 220, 00 # yellow
             else:
-                r, g, b = 240, 50, 50
+                r, g, b = 240, 10, 10 # red
                 pass
             holglobes[holid][globe_idx] = [r,g,b]
             pass
@@ -210,7 +210,7 @@ class HolibeatOptions(optparse.OptionParser):
                         type="int")
 
         self.add_option('', '--autorange', dest='autorange',
-                        help="Dynamically set range of display based on max value",
+                        help="Dynamically set range of display based on max value [%default]",
                         action='store_true', default=True)
 
         self.add_option('', '--no-autorange', dest='autorange',
@@ -222,7 +222,7 @@ class HolibeatOptions(optparse.OptionParser):
                         type="float")
         
         self.add_option('', '--quietseconds', dest='quiet_seconds',
-                        help="Period of relative quiet to reset autoranging",
+                        help="Period of relative quiet to reset autoranging [%default]",
                         type="int", default=5)
         
     def parseOptions(self):
