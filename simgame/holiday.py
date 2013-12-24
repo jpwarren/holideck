@@ -4,6 +4,10 @@ Simulated Holiday Server
 import select, socket
 import array
 
+from Queue import Empty
+from multiprocessing import Process, Queue
+from iotas import iotas
+
 UDP_HEADER_LENGTH = 10
 UDP_DATA_LENGTH = 150
 UDP_MSG_LENGTH = UDP_HEADER_LENGTH + UDP_DATA_LENGTH
@@ -30,17 +34,17 @@ class HolidayRemote(object):
 
         if not remote:
             self.addr = addr
-            self.tcpport = tcpport
+
             if udpport is None:
                 bound_port = False
-                for port in range(9988, 10100):
+                for udpport in range(9988, 10100):
                     try:
-                        self.bind_udp(port)
+                        self.bind_udp(udpport)
                         bound_port = True
                         break
                     except socket.error, e:
                         num, s = e
-                        # Ignore Address already in use
+                        # Try again if port is in use, else raise
                         if num != 98:
                             raise
                         pass
@@ -51,10 +55,27 @@ class HolidayRemote(object):
             
             else:
                 self.bind_udp(udpport)
+                
             print "UDP listening on (%s, %s)" % (self.addr, self.udpport)
+
+            # Set up REST API on a TCP port
+            self.q = Queue()
+
+            self.iop = Process(target=iotas.run, kwargs={ 'port': 8080,
+                                                          'queue': self.q })
+            self.iop.start()
         else:
             raise NotImplementedError("Listening Simulator only. Does not send to remote devices.")
 
+    def exit(self):
+        """
+        Force shutdown of processes
+        """
+        self.iop.terminate()
+
+    def __del__(self):
+        self.exit()
+        
     def bind_udp(self, udpport):
         """
         Try to bind to a UDP port, retrying a range if one is already in use
@@ -95,3 +116,34 @@ class HolidayRemote(object):
             self.globes[i] = [ coldata[0], coldata[1], coldata[2] ]
             pass
         
+    def recv_tcp(self):
+        """
+        Receive data on the TCP port and process it
+
+        Reception of data is via the Queue
+        """
+        # Get all the data available, and only use the latest
+        # This will throw away all old data if the main loop is
+        # too slow, so we at least catch up.
+        data = None
+        while True:
+            try:
+                data = self.q.get(block=False)
+
+            except Empty:
+                break
+            pass
+
+        if data is not None:
+            # Data is a list of globe values encoded as
+            # 3 x 2-char hex values, one per line
+            globedata = data.split()
+            for i, vals in enumerate(globedata):
+                r = int(vals[:2], 16)
+                g = int(vals[2:4], 16)
+                b = int(vals[4:6], 16)
+                self.globes[i] = [ r, g, b ]
+                pass
+            pass
+        pass
+    

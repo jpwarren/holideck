@@ -32,7 +32,11 @@ class BaseOptParser(optparse.OptionParser):
                         type="int", default=1)
 
         # Listen on multiple TCP/UDP ports, one for each Holiday we simulate
-        self.add_option('-p', '--portstart', dest='portstart',
+        self.add_option('-t', '--tcp-portstart', dest='tcp_portstart',
+                        help="Port number to start at for REST API listeners [%default]",
+                        type="int", default=8080)
+
+        self.add_option('-u', '--udp-portstart', dest='udp_portstart',
                         help="Port number to start at for UDP listeners [%default]",
                         type="int", default=9988)
 
@@ -218,6 +222,10 @@ class SimRunner(object):
             pygame.display.update()
             pass
         pygame.quit()
+
+        for hol in self.HolidayList:
+            hol.exit()
+            pass
         pass
 
     def recv_data(self):
@@ -226,6 +234,7 @@ class SimRunner(object):
         """
         for hol in self.HolidayList:
             hol.recv_udp()
+            hol.recv_tcp()
             pass
 
     def blank_strings(self):
