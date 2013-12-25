@@ -31,6 +31,10 @@ class TwinkleOptions(optparse.OptionParser):
                         help="Number of Holiday strings to use [%default]",
                         type="int", default=1)
 
+        self.add_option('-b', '--basecolor', dest='basecolor',
+                        help="Color to initialize string to, as #nnnnnn",
+                        type="string")
+        
         self.add_option('-c', '--change_chance', dest='change_chance',
                         help="% chance a given globe will change each round [%default]",
                         type="float", default=1.0 )
@@ -50,7 +54,19 @@ class TwinkleOptions(optparse.OptionParser):
         self.add_option('-V', '--VALSTEP', dest='valstep_max',
                         help="Maximum step between values [%default]",
                         type="float", default=0.2 )
-                
+
+        self.add_option('', '--huediff-max', dest='huediff_max',
+                        help="Maximum hue difference from basecolor [%default]",
+                        type="float", default=1.0 )
+
+        self.add_option('', '--satdiff-max', dest='satdiff_max',
+                        help="Maximum saturation difference from basecolor [%default]",
+                        type="float", default=1.0 )
+
+        self.add_option('', '--valdiff-max', dest='valdiff_max',
+                        help="Maximum value difference from basecolor [%default]",
+                        type="float", default=1.0 )
+        
         # Send on multiple TCP/UDP ports, one for each Holiday we simulate
         self.add_option('-p', '--portstart', dest='portstart',
                         help="Port number to start at for UDP listeners [%default]",
@@ -74,38 +90,50 @@ class TwinkleOptions(optparse.OptionParser):
             pass
         pass
 
-def init_hol(hol):
+def init_hol(hol, basecolor=None):
     """
     Initialize a Holiday to some random-ish colors
     """
-    for globeidx in range(0, HolidaySecretAPI.NUM_GLOBES):
-        color = []
-        # red
-        color.append(random.randint(0, 130))
-        #color.append(0)
-        # green
-        color.append(random.randint(0, 130))
-        # blue
-        color.append(random.randint(0, 130))
-        #color.append(0)
+    if basecolor is not None:
+        (r, g, b) = basecolor
+        hol.fill(r, g, b)
+    else:
+        for globeidx in range(0, HolidaySecretAPI.NUM_GLOBES):
+            color = []
+            # red
+            color.append(random.randint(0, 130))
+            #color.append(0)
+            # green
+            color.append(random.randint(0, 130))
+            # blue
+            color.append(random.randint(0, 130))
+            #color.append(0)
 
-        r, g, b = color
+            r, g, b = color
 
-        hol.setglobe(globeidx, r, g, b)
-        pass
+            hol.setglobe(globeidx, r, g, b)
+            pass
     hol.render()
     
 def twinkle_holiday(hol,
                     huestep_max=0.1,
                     satstep_max=0.1,
                     valstep_max=0.5,
-                    change_chance=1.0
+                    huediff_max=1.0,
+                    satdiff_max=1.0,
+                    valdiff_max=1.0,
+                    change_chance=1.0,
+                    basecolor=None
                     ):
     """
     Make a Holiday twinkle like the stars
     """
     # For each globe, mostly have a random drift of brightness
     # and hue by but occasionally jump in brightness up or down
+    if basecolor:
+        (base_r, base_g, base_b) = basecolor
+        base_hsv = colorsys.rgb_to_hsv(base_r/255.0, base_g/255.0, base_b/255.0)
+    
     for idx in range(0, HolidaySecretAPI.NUM_GLOBES):
 
         # % chance of updating a given globe
@@ -119,10 +147,15 @@ def twinkle_holiday(hol,
             # 50% chance of positive or negative step
             if random.randint(0, 1):
                 h += huestep
+                if basecolor and abs(base_hsv[0] - h) > huediff_max:
+                    h = base_hsv[0] + huediff_max
                 if h > 1.0:
                     h = h - 1.0
             else:
                 h -= huestep
+                if basecolor and abs(h - base_hsv[0]) > huediff_max:
+                    h = base_hsv[0] - huediff_max
+
                 if h < 0.0:
                     h = 1.0 + h
                 pass
@@ -130,10 +163,16 @@ def twinkle_holiday(hol,
             satstep = random.random() * satstep_max
             if random.randint(0, 1):
                 s += satstep
+                if basecolor and abs(base_hsv[1] - s) > satdiff_max:
+                    s = base_hsv[1] + satdiff_max
+
                 if s > 0.8:
                     s = 0.8
             else:
                 s -= satstep
+                if basecolor and abs(s - base_hsv[1]) > satdiff_max:
+                    s = base_hsv[1] - satdiff_max
+
                 # Make sure things stay bright and colorful!
                 if s < 0.2:
                     s = 0.2
@@ -143,10 +182,16 @@ def twinkle_holiday(hol,
             # 50% chance of positive or negative step
             if random.randint(0, 1):
                 v += valstep
+                if basecolor and abs(base_hsv[2] - v) > valdiff_max:
+                    v = base_hsv[2] + valdiff_max
+
                 if v > 1.0:
                     v = 1.0
             else:
                 v -= valstep
+                if basecolor and abs(v - base_hsv[2]) > valdiff_max:
+                    v = base_hsv[2] - valdiff_max
+
                 if v < 0.2:
                     v = 0.2
                 pass
@@ -166,6 +211,15 @@ if __name__ == '__main__':
     optparse = TwinkleOptions(usage=usage)
 
     options, args = optparse.parseOptions()
+
+    if options.basecolor is not None:
+        bc = options.basecolor.lstrip('#')
+        r = int(bc[:2], 16)
+        g = int(bc[2:4], 16)
+        b = int(bc[4:6], 16)
+        basecolor = (r, g, b)
+    else:
+        basecolor = None
     
     hols = []
     if len(args) > 1:
@@ -179,7 +233,7 @@ if __name__ == '__main__':
             pass
 
     for hol in hols:
-        init_hol(hol)
+        init_hol(hol, basecolor)
         pass
     
     while True:
@@ -188,7 +242,11 @@ if __name__ == '__main__':
                             options.huestep_max,
                             options.satstep_max,
                             options.valstep_max,
-                            options.change_chance)
+                            options.huediff_max,
+                            options.satdiff_max,
+                            options.valdiff_max,
+                            options.change_chance,
+                            basecolor)
             pass
         time.sleep(options.anim_sleep)
 
