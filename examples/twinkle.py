@@ -166,16 +166,16 @@ def twinkle_holiday(hol,
                 if basecolor and abs(base_hsv[1] - s) > satdiff_max:
                     s = base_hsv[1] + satdiff_max
 
-                if s > 0.8:
-                    s = 0.8
+                if s > 1.0:
+                    s = 1.0
             else:
                 s -= satstep
                 if basecolor and abs(s - base_hsv[1]) > satdiff_max:
                     s = base_hsv[1] - satdiff_max
 
                 # Make sure things stay bright and colorful!
-                if s < 0.2:
-                    s = 0.2
+                if s < 0.0:
+                    s = 0.0
 
             # Adjust value by a random amount
             valstep = random.random() * valstep_max
