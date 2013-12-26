@@ -8,6 +8,9 @@ import time
 import sys
 import random
 import colorsys
+import webcolors
+
+import json
 
 from secretapi.holidaysecretapi import HolidaySecretAPI
 
@@ -67,11 +70,18 @@ class TwinkleOptions(optparse.OptionParser):
                         help="Maximum value difference from basecolor [%default]",
                         type="float", default=1.0 )
         
-        # Send on multiple TCP/UDP ports, one for each Holiday we simulate
-        self.add_option('-p', '--portstart', dest='portstart',
-                        help="Port number to start at for UDP listeners [%default]",
-                        type="int", default=9988)
+        self.add_option('-f', '--patternfile', dest='patternfile',
+                        help="Initalise string with a pattern from a JSON format file",
+                        type="string")
 
+        self.add_option('', '--chase', dest='chase',
+                        help="Lights chase around the string",
+                        action="store_true", default=False)
+
+        self.add_option('', '--chase-direction', dest='chase_direction',
+                        help="Set direction of chase, if chase enabled [%default]",
+                        type="choice", choices=['forward', 'backward'], default='forward')
+        
     def parseOptions(self):
         """
         Emulate twistedmatrix options parser API
@@ -88,15 +98,27 @@ class TwinkleOptions(optparse.OptionParser):
         if len(self.args) < 1:
             self.error("Specify address and port of remote Holiday(s)")
             pass
+
+        self.options.initpattern = None
+        if self.options.patternfile:
+            with open(self.options.patternfile) as fp:
+                jdata = json.load(fp)
+                self.options.initpattern = jdata['lights']
+                pass
         pass
 
-def init_hol(hol, basecolor=None):
+def init_hol(hol, basecolor=None, pattern=None):
     """
     Initialize a Holiday to some random-ish colors
     """
     if basecolor is not None:
         (r, g, b) = basecolor
         hol.fill(r, g, b)
+    elif pattern is not None:
+        for globeidx, vals in enumerate(pattern):
+            (r, g, b) = webcolors.hex_to_rgb(vals)
+            hol.setglobe(globeidx, r, g, b)
+            pass
     else:
         for globeidx in range(0, HolidaySecretAPI.NUM_GLOBES):
             color = []
@@ -123,7 +145,9 @@ def twinkle_holiday(hol,
                     satdiff_max=1.0,
                     valdiff_max=1.0,
                     change_chance=1.0,
-                    basecolor=None
+                    basecolor=None,
+                    chase=False,
+                    chase_direction='forward',
                     ):
     """
     Make a Holiday twinkle like the stars
@@ -203,6 +227,23 @@ def twinkle_holiday(hol,
             hol.setglobe(idx, int(255*r), int(255*g), int(255*b))
             pass
         pass
+
+    # Chase mode?
+    if chase:
+        if chase_direction == 'forward':
+            # Rotate all globes around by one place
+            oldglobes = hol.globes[:]
+            hol.globes = oldglobes[1:]
+            hol.globes.append(oldglobes[0])
+            pass
+        else:
+            log.debug("old: %s", hol.globes)
+            oldglobes = hol.globes[:]
+            hol.globes = oldglobes[:-1]
+            hol.globes.insert(0, oldglobes[-1])
+            log.debug("new: %s", hol.globes)
+            pass
+    
     hol.render()
     
 if __name__ == '__main__':
@@ -213,11 +254,7 @@ if __name__ == '__main__':
     options, args = optparse.parseOptions()
 
     if options.basecolor is not None:
-        bc = options.basecolor.lstrip('#')
-        r = int(bc[:2], 16)
-        g = int(bc[2:4], 16)
-        b = int(bc[4:6], 16)
-        basecolor = (r, g, b)
+        basecolor = webcolors.hex_to_rgb(options.basecolor)
     else:
         basecolor = None
     
@@ -233,7 +270,7 @@ if __name__ == '__main__':
             pass
 
     for hol in hols:
-        init_hol(hol, basecolor)
+        init_hol(hol, basecolor, options.initpattern)
         pass
     
     while True:
@@ -246,7 +283,9 @@ if __name__ == '__main__':
                             options.satdiff_max,
                             options.valdiff_max,
                             options.change_chance,
-                            basecolor)
+                            basecolor,
+                            options.chase,
+                            options.chase_direction)
             pass
         time.sleep(options.anim_sleep)
 
