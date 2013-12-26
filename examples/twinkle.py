@@ -9,8 +9,9 @@ import sys
 import random
 import colorsys
 import webcolors
-
 import json
+
+from simplexnoise import raw_noise_2d
 
 from secretapi.holidaysecretapi import HolidaySecretAPI
 
@@ -46,6 +47,14 @@ class TwinkleOptions(optparse.OptionParser):
                         help="Sleep between animation frames, in seconds [%default]",
                         type="float", default=0.1 )
 
+        self.add_option('-f', '--patternfile', dest='patternfile',
+                        help="Initalise string with a pattern from a JSON format file",
+                        type="string")
+
+        self.add_option('-t', '--twinkle-algo', dest='twinkle_algo',
+                        help="Algorithm to use for twinkling [%default]",
+                        type="choice", choices=['random', 'simplex'], default='random')
+        
         self.add_option('-H', '--HUESTEP', dest='huestep_max',
                         help="Maximum step between hues [%default]",
                         type="float", default=0.1 )
@@ -70,10 +79,6 @@ class TwinkleOptions(optparse.OptionParser):
                         help="Maximum value difference from basecolor [%default]",
                         type="float", default=1.0 )
         
-        self.add_option('-f', '--patternfile', dest='patternfile',
-                        help="Initalise string with a pattern from a JSON format file",
-                        type="string")
-
         self.add_option('', '--chase', dest='chase',
                         help="Lights chase around the string",
                         action="store_true", default=False)
@@ -112,7 +117,7 @@ def init_hol(hol, basecolor=None, pattern=None):
     Initialize a Holiday to some random-ish colors
     """
     if basecolor is not None:
-        (r, g, b) = basecolor
+        (r, g, b) = webcolors.hex_to_rgb(basecolor)
         hol.fill(r, g, b)
     elif pattern is not None:
         for globeidx, vals in enumerate(pattern):
@@ -136,101 +141,130 @@ def init_hol(hol, basecolor=None, pattern=None):
             hol.setglobe(globeidx, r, g, b)
             pass
     hol.render()
+
+    pattern = hol.globes[:]
+    return pattern
     
-def twinkle_holiday(hol,
-                    huestep_max=0.1,
-                    satstep_max=0.1,
-                    valstep_max=0.5,
-                    huediff_max=1.0,
-                    satdiff_max=1.0,
-                    valdiff_max=1.0,
-                    change_chance=1.0,
-                    basecolor=None,
-                    chase=False,
-                    chase_direction='forward',
-                    ):
+def twinkle_holiday(hol, options, init_pattern, noise_array=None):
     """
     Make a Holiday twinkle like the stars
     """
     # For each globe, mostly have a random drift of brightness
     # and hue by but occasionally jump in brightness up or down
-    if basecolor:
-        (base_r, base_g, base_b) = basecolor
+    if options.basecolor:
+        (base_r, base_g, base_b) = webcolors.hex_to_rgb(options.basecolor)
         base_hsv = colorsys.rgb_to_hsv(base_r/255.0, base_g/255.0, base_b/255.0)
+        pass
     
+    if noise_array is None:
+        noise_array = [ 0, ] * HolidaySecretAPI.NUM_GLOBES
+        pass
+        
     for idx in range(0, HolidaySecretAPI.NUM_GLOBES):
 
-        # % chance of updating a given globe
-        if random.random() < change_chance:
-        
-            r, g, b = hol.getglobe(idx)
-            (h, s, v) = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-            #log.debug("start h s v: %f %f %f", h, s, v)
-            # Adjust hue by a random amount
-            huestep = random.random() * huestep_max
-            # 50% chance of positive or negative step
-            if random.randint(0, 1):
-                h += huestep
-                if basecolor and abs(base_hsv[0] - h) > huediff_max:
-                    h = base_hsv[0] + huediff_max
-                if h > 1.0:
-                    h = h - 1.0
-            else:
-                h -= huestep
-                if basecolor and abs(h - base_hsv[0]) > huediff_max:
-                    h = base_hsv[0] - huediff_max
-
-                if h < 0.0:
-                    h = 1.0 + h
+        # Choose globe update algorithm
+        if options.twinkle_algo == 'simplex':
+            nv = raw_noise_2d(noise_array[idx], random.random()) / 5.0
+            noise_array[idx] += nv
+            if noise_array[idx] > 1.0:
+                noise_array[idx] = 1.0
+                pass
+            elif noise_array[idx] < -1.0:
+                noise_array[idx] = -1.0
                 pass
 
-            satstep = random.random() * satstep_max
-            if random.randint(0, 1):
-                s += satstep
-                if basecolor and abs(base_hsv[1] - s) > satdiff_max:
-                    s = base_hsv[1] + satdiff_max
+            ranger = (noise_array[idx] + 1.0) / 2.0
 
-                if s > 1.0:
-                    s = 1.0
-            else:
-                s -= satstep
-                if basecolor and abs(s - base_hsv[1]) > satdiff_max:
-                    s = base_hsv[1] - satdiff_max
-
-                # Make sure things stay bright and colorful!
-                if s < 0.0:
-                    s = 0.0
-
-            # Adjust value by a random amount
-            valstep = random.random() * valstep_max
-            # 50% chance of positive or negative step
-            if random.randint(0, 1):
-                v += valstep
-                if basecolor and abs(base_hsv[2] - v) > valdiff_max:
-                    v = base_hsv[2] + valdiff_max
-
-                if v > 1.0:
-                    v = 1.0
-            else:
-                v -= valstep
-                if basecolor and abs(v - base_hsv[2]) > valdiff_max:
-                    v = base_hsv[2] - valdiff_max
-
-                if v < 0.2:
-                    v = 0.2
+            # Adjust colour. If basecolor, adjust from basecolor
+            if options.basecolor:
+                (base_r, base_g, base_b) = webcolors.hex_to_rgb(options.basecolor)
+                r = int(base_r * ranger)
+                g = int(base_g * ranger)
+                b = int(base_b * ranger)
                 pass
+            else:
+                # adjust from original color
+                (base_r, base_g, base_b) = init_pattern[idx]
+                #log.debug("adjusting from orig: %d %d %d", base_r, base_g, base_b)
+                r = int(base_r * ranger)
+                g = int(base_g * ranger)
+                b = int(base_b * ranger)
+                pass
+            hol.setglobe(idx, r, g, b)
+            
+        else:
+            # % chance of updating a given globe
+            if random.random() < options.change_chance:
 
-            #log.debug("end h s v: %f %f %f", h, s, v)
+                r, g, b = hol.getglobe(idx)
+                (h, s, v) = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
+                #log.debug("start h s v: %f %f %f", h, s, v)
+                # Adjust hue by a random amount
+                huestep = random.random() * options.huestep_max
+                # 50% chance of positive or negative step
+                if random.randint(0, 1):
+                    h += huestep
+                    if options.basecolor and abs(base_hsv[0] - h) > options.huediff_max:
+                        h = base_hsv[0] + options.huediff_max
+                    if h > 1.0:
+                        h = h - 1.0
+                else:
+                    h -= huestep
+                    if options.basecolor and abs(h - base_hsv[0]) > options.huediff_max:
+                        h = base_hsv[0] - options.huediff_max
 
-            (r, g, b) = colorsys.hsv_to_rgb(h, s, v)
-            #log.debug("r g b: %f %f %f", r, g, b)
-            hol.setglobe(idx, int(255*r), int(255*g), int(255*b))
+                    if h < 0.0:
+                        h = 1.0 + h
+                    pass
+
+                satstep = random.random() * options.satstep_max
+                if random.randint(0, 1):
+                    s += satstep
+                    if options.basecolor and abs(base_hsv[1] - s) > options.satdiff_max:
+                        s = base_hsv[1] + options.satdiff_max
+
+                    if s > 1.0:
+                        s = 1.0
+                else:
+                    s -= satstep
+                    if options.basecolor and abs(s - base_hsv[1]) > options.satdiff_max:
+                        s = base_hsv[1] - options.satdiff_max
+
+                    # Make sure things stay bright and colorful!
+                    if s < 0.0:
+                        s = 0.0
+
+                # Adjust value by a random amount
+                valstep = random.random() * options.valstep_max
+                # 50% chance of positive or negative step
+                if random.randint(0, 1):
+                    v += valstep
+                    if options.basecolor and abs(base_hsv[2] - v) > options.valdiff_max:
+                        v = base_hsv[2] + options.valdiff_max
+
+                    if v > 1.0:
+                        v = 1.0
+                else:
+                    v -= valstep
+                    if options.basecolor and abs(v - base_hsv[2]) > options.valdiff_max:
+                        v = base_hsv[2] - options.valdiff_max
+
+                    if v < 0.2:
+                        v = 0.2
+                    pass
+
+                #log.debug("end h s v: %f %f %f", h, s, v)
+
+                (r, g, b) = colorsys.hsv_to_rgb(h, s, v)
+                #log.debug("r g b: %f %f %f", r, g, b)
+                hol.setglobe(idx, int(255*r), int(255*g), int(255*b))
+                pass
             pass
         pass
 
     # Chase mode?
-    if chase:
-        if chase_direction == 'forward':
+    if options.chase:
+        if options.chase_direction == 'forward':
             # Rotate all globes around by one place
             oldglobes = hol.globes[:]
             hol.globes = oldglobes[1:]
@@ -253,12 +287,12 @@ if __name__ == '__main__':
 
     options, args = optparse.parseOptions()
 
-    if options.basecolor is not None:
-        basecolor = webcolors.hex_to_rgb(options.basecolor)
-    else:
-        basecolor = None
-    
     hols = []
+    # List of holiday initial patterns
+    hol_inits = []
+
+    # List of holiday noise patterns
+    hol_noise = []
     if len(args) > 1:
         for arg in args:
             hol_addr, hol_port = arg.split(':')
@@ -269,23 +303,15 @@ if __name__ == '__main__':
             hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
             pass
 
+    # Initialise holidays
     for hol in hols:
-        init_hol(hol, basecolor, options.initpattern)
+        hol_inits.append(init_hol(hol, options.basecolor, options.initpattern))
+        hol_noise.append(None)
         pass
-    
+
     while True:
-        for hol in hols:
-            twinkle_holiday(hol,
-                            options.huestep_max,
-                            options.satstep_max,
-                            options.valstep_max,
-                            options.huediff_max,
-                            options.satdiff_max,
-                            options.valdiff_max,
-                            options.change_chance,
-                            basecolor,
-                            options.chase,
-                            options.chase_direction)
+        for i, hol in enumerate(hols):
+            noise = twinkle_holiday(hol, options, hol_inits[i], hol_noise[i])
             pass
         time.sleep(options.anim_sleep)
 
