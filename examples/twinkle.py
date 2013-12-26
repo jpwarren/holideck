@@ -86,6 +86,10 @@ class TwinkleOptions(optparse.OptionParser):
         self.add_option('', '--chase-direction', dest='chase_direction',
                         help="Set direction of chase, if chase enabled [%default]",
                         type="choice", choices=['forward', 'backward'], default='forward')
+
+        self.add_option('', '--simplex-damper', dest='simplex_damper',
+                        help="Amount of simplex noise dampening [%default]",
+                        type="float", default=5.0)
         
     def parseOptions(self):
         """
@@ -164,7 +168,7 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
 
         # Choose globe update algorithm
         if options.twinkle_algo == 'simplex':
-            nv = raw_noise_2d(noise_array[idx], random.random()) / 5.0
+            nv = raw_noise_2d(noise_array[idx], random.random()) / options.simplex_damper
             noise_array[idx] += nv
             if noise_array[idx] > 1.0:
                 noise_array[idx] = 1.0
