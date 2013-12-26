@@ -1,0 +1,26 @@
+{ "lights": [
+"#FF0000", "#FF0000", "#FF0000",
+"#FF0000", "#FF0000", 
+"#00FF00", "#00FF00", "#00FF00", 
+"#00FF00", "#00FF00", 
+"#FFFFFF", "#FFFFFF", "#FFFFFF",
+"#FFFFFF", "#FFFFFF", 
+
+"#FF0000", "#FF0000", "#FF0000",
+"#FF0000", "#FF0000", 
+"#00FF00", "#00FF00", "#00FF00", 
+"#00FF00", "#00FF00", 
+"#FFFFFF", "#FFFFFF", "#FFFFFF",
+"#FFFFFF", "#FFFFFF", 
+
+"#FF0000", "#FF0000", "#FF0000",
+"#FF0000", "#FF0000", 
+"#00FF00", "#00FF00", "#00FF00", 
+"#00FF00", "#00FF00", 
+"#FFFFFF", "#FFFFFF", "#FFFFFF",
+"#FFFFFF", "#FFFFFF",
+
+"#FF0000", "#FF0000", "#FF0000",
+"#00FF00", "#00FF00"
+
+ ] }
