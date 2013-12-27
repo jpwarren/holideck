@@ -14,9 +14,13 @@ import sys
 import time
 import logging
 import optparse
+import math
+import webcolors
 
 import holiday
 from secretapi.holidaysecretapi import HolidaySecretAPI
+
+NUM_GLOBES = holiday.Holiday.NUM_GLOBES
 
 # Simulator default address
 SIM_ADDR = "localhost:8080"
@@ -40,20 +44,30 @@ class PhlostonOptions(optparse.OptionParser):
                         help="Number of Holiday strings to use [%default]",
                         type="int", default=1)
 
-        # Comms mode, TCP or UDP
-        self.add_option('-m', '--mode', dest='mode',
-                        help="Communications mode, UDP or TCP [%default]",
-                        type="choice", choices=['udp', 'tcp'], default='tcp')
+        self.add_option('-a', '--anim-sleep', dest='anim_sleep',
+                        help="Sleep time between animation frames",
+                        type="float", default=0.1)
 
-        # Port to start at if we use multiple Holidays
-        self.add_option('-p', '--portstart', dest='portstart',
-                        help="Port number to start at for strings [%default]",
-                        type="int", default=8080)
+        self.add_option('-c', '--color', dest='colorset',
+                         help="Color of the string(s)",
+                         action='append', default=[])
 
-        self.add_option('-f', '--fps', dest='fps',
-                        help="Frames per second, used to slow down data sending",
-                        type="int", default=30)
+        self.add_option('', '--reverse', dest='forwards',
+                        help="Reverse direction of animation", 
+                        action="store_false", default=True)
+        
+        self.add_option('', '--switchback', dest='switchback',
+                        help="'Switchback' strings, make a single string display like it's "
+                        "more than one every m globes",
+                        type="int")
 
+        self.add_option('', '--sb-gap', dest='sb_gap',
+                        help="Have a gap of n globes between each switchback",
+                        type="int", default=0)
+        
+        self.add_option('', '--disable-swapdir', dest='disable_swapdir',
+                        help="Disables swapping direction with each switchback", 
+                        action="store_true", default=False)
         
     def parseOptions(self):
         """
@@ -80,64 +94,161 @@ class PhlostonOptions(optparse.OptionParser):
         # strings we have, and overrides the -n setting
         if self.options.numstrings < len(self.args):
             self.options.numstrings = len(self.args)
+
+        if self.options.colorset:
+            colorset = [ webcolors.hex_to_rgb(x) for x in self.options.colorset ]
+            self.options.colorset = colorset
+
+class vHoliday(object):
+    """
+    A 'virtual' Holiday, used for implementing switchback mode and
+    other things on n real Holidays.
+
+    A virtual Holiday can be shorter than a real Holiday, or exactly
+    as long; it cannot (for now) be longer than a real one.
+
+    FIXME: Enable a virtual Holiday to be longer than a real Holiday
+    so we could span Holidays if we wanted to.
+    """
+    def __init__(self, hols=None, start=0, length=holiday.Holiday.NUM_GLOBES, direction=True):
+        """
+        Each parameter is a list of one or more physical Holidays
+
+        @param addrlist: a list of (ipaddr, port, mode) tuples specifying
+               how to communicate with a Holiday (mode is TCP or UDP)
+        @param start: The starting offset for this virtual holiday
+        @param length: the length of this virtual Holiday
+        @param direction: If True, move from low to high idx, if False, from high to low idx
+        """
+        if hols is None:
+            self.hols = []
+            self.hols.append(HolidaySecretAPI('localhost', 9988))
+        else:
+            self.hols = hols
+            pass
+
+        self.start = start
+        if length > holiday.Holiday.NUM_GLOBES:
+            raise ValueError("Virtual Holidays cannot be longer than real ones.")
+        self.length = length
+
+        self.direction = direction
+
+    def map_globe_idx(self, srcidx):
+        """
+        Map the 'virtual' globe index onto the 'real' holiday and globe index
+        """
+        # positive direction
+        if self.direction:
+            dstidx = self.start + srcidx
+        else:
+            dstidx = self.start + self.length - srcidx - 1
+            pass
+
+        # Check we haven't gone off the end of our 'virtual' string
+        if abs(dstidx - self.start) > self.length:
+            raise ValueError("globe %d not valid on this vHoliday" % srcidx)
+
+        holid = 0
+        return (holid, dstidx)
+
+    # Implement the standard Holiday API for the virtual Holiday
+    def getglobe(self, globenum):
+        holid, idx = self.map_globe_idx(globenum)
+        return self.hols[holid].getglobe(idx)
+
+    def setglobe(self, globenum, color):
+        holid, idx = self.map_globe_idx(globenum)
+        #log.debug("set globe: %d %s [ %d, %d ]", globenum, color, holid, idx)
+        res = self.hols[holid].setglobe(idx, color[0], color[1], color[2])
+
+    def set_pattern(self, pattern):
+        for globenum, color in enumerate(pattern):
+            holid, idx = self.map_globe_idx(globenum)
+            self.hols[holid].setglobe(idx, color[0], color[1], color[2])
+            pass
         pass
 
-class PhlostonString(object):
+    def fill(self, color):
+        for hol in self.hols:
+            hol.fill(color[0], color[1], color[2])
+            pass
+        pass
+
+    def chase(self, direction=True):
+        raise NotImplementedError
+
+    def rotate(self, direction=True):
+        raise NotImplementedError
+
+    def render(self):
+        """
+        Render all physical Holidays mapped to this virtual Holiday
+        """
+        for hol in self.hols:
+            hol.render()
+    
+class PhlostonString(vHoliday):
     """
     A PhlostonString is a Holiday turned into a Phloston Paradise visual alarm light.
 
     Turns a Holiday into Phloston Paradise hotel evacuation lighting, from the movie
     The Fifth Element.
     """
-    
-    def __init__(self, addr,
-                 color=(0xff, 0xff, 0xff),
-                 mode='tcp',
-                 delay=0.02):
+    def __init__(self, addrlist=None, start=0,
+                 length=holiday.Holiday.NUM_GLOBES, direction=True,
+                 color=None, pattern=None):    
         """
-        Controls a single Holiday at addr
+        @param color: An (r,g,b) tuple of the lights colour
+        @param pattern: An optional pattern of light colours to use
+        """
+        super(PhlostonString, self).__init__(addrlist, start, length, direction)
 
-        @param addr: Address of the remote Holiday IoTAS controller
-        @param color: The color of the lights
-        @param delay: Time between lighting each globe
-        """
-        if mode == 'tcp':
-            self.hol = holiday.Holiday(addr=addr,
-                                       remote=True)
-        elif mode == 'udp':
-            addr, port = addr.split(':')
-            self.hol = HolidaySecretAPI(addr, int(port))
-            
-        self.color = color
+        if pattern is not None:
+            self.pattern = pattern
+        elif color is not None:
+            self.pattern = [ color, ] * length
+        else:
+            self.pattern = [ (0xaa, 0x00, 0x00), ] * length
+            pass
 
         self.numlit = 0
 
-        self.base_pattern = [
-            (0x00, 0x00, 0x00),
-            ] * self.hol.NUM_GLOBES
-
-        # Make a copy so we don't clobber the original
-        self.globe_pattern = self.base_pattern[:]
-
-    def animate(self):
+    def animate(self, forwards=True):
         # Animation sequence is to start blank, then light each
         # globe in sequence until all are lit, then start again.
 
-        self.numlit += 1
-        if self.numlit > self.hol.NUM_GLOBES:
-            self.numlit = 0
-            self.globe_pattern = self.base_pattern[:]
-            pass
-        else:
-            for i in range(self.numlit):
-                self.globe_pattern[i] = self.color
+        # Run animation 'forwards'
+        if forwards:
+            # Light the globes that are lit
+            for i in range(0, self.numlit):
+                #log.debug("lit: %d", i)
+                self.setglobe(i, self.pattern[i])
                 pass
-            #log.debug("Pattern is: %s", self.globe_pattern)
-            self.hol.set_pattern(self.globe_pattern)
-            self.hol.render()
+
+            # Blank those that are not lit
+            for i in range(self.numlit, self.length+1):
+                #log.debug("unlit: %d", i)
+                self.setglobe(i, (0x00, 0x00, 0x00))
+                pass
+        else:
+            # Light the globes that are lit
+            for i in range(0, self.numlit):
+                #log.debug("lit: %d", i)
+                self.setglobe(self.length-i-1, self.pattern[i])
+                pass
+
+            # Blank those that are not lit
+            for i in range(self.numlit, self.length+1):
+                #log.debug("unlit: %d", i)
+                self.setglobe(self.length-i-1, (0x00, 0x00, 0x00))
+                pass
+            
+        self.numlit += 1
+        if self.numlit > self.length:
+            self.numlit = 0
             pass
-        pass
-        
+
 if __name__ == '__main__':
 
     usage = "Usage: %prog [options] [<addr:port>]"
@@ -145,46 +256,83 @@ if __name__ == '__main__':
 
     options, args = optparse.parseOptions()
 
-    phlostons = []
-
-    colorset = [
-        (0x33, 0x88, 0x33),
-        (0x88, 0x33, 0x33),
-        (0x00, 0x33, 0x88),
-        (0x88, 0x88, 0x33),
-        (0x33, 0x88, 0x88),
-        ]
-    if options.numstrings > len(colorset):
-        colorset = colorset * ( int(options.numstrings/len(colorset))+1)
-        pass
-
-    for i in range(options.numstrings):
-        if options.numstrings > len(args):
-            addr, port = args[0].split(':')
-            port = int(port) + i
-            ps_addr = "%s:%s" % (addr, port)
+    hols = []
+    if len(args) > 1:
+        for arg in args:
+            hol_addr, hol_port = arg.split(':')
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+    else:
+        hol_addr, hol_port = args[0].split(':')
+        for i in range(options.numstrings):
+            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
             pass
+
+    # Figure out how many 'virtual' strings we have
+    vhols = []
+
+    # Track how many lights are lit
+    litnums = []
+    if options.switchback:
+        length = options.switchback
+        pieces = int(math.floor(float(NUM_GLOBES) / options.switchback))
+
+    else:
+        length = NUM_GLOBES
+        pieces = 1
+        pass
+        
+    num_vhols = pieces * options.numstrings
+
+    if options.colorset:
+        # Use the last defined color to make up the full set
+        # This allows us to define one color for all strings,
+        # or up to n of m total string colors
+        if len(options.colorset) < num_vhols:
+            lastcolor = options.colorset[-1]
+            for i in range( num_vhols - len(options.colorset) ):
+                options.colorset.append(lastcolor)
+                pass
+            pass
+    
+    for i in range(num_vhols):
+        # Use the same physical holiday for each chunk of pieces
+        holid = int(i / pieces)
+        if options.disable_swapdir:
+            direction = True
         else:
-            ps_addr = args[i]
+            direction = not (i % 2)
+
+        start = length * (i % pieces)
+        if i > 0:
+            start += options.sb_gap
             pass
-
-        ps = PhlostonString(ps_addr,
-                            mode=options.mode,
-                            color=colorset[i],)
-        phlostons.append(ps)
-
+        
+        #log.debug("holid: %d, direction: %d, start: %d", holid, direction, start)
+        if options.colorset:
+            vhol = PhlostonString( [hols[holid], ],
+                                   start,
+                                   length,
+                                   direction,
+                                   options.colorset[i])
+        else:
+            vhol = PhlostonString( [hols[holid], ],
+                                   start,
+                                   length,
+                                   direction)
+        vhols.append(vhol)
+        litnums.append(0)
         pass
-
-    # Time limiting bits to slow down the UDP firehose
-    # This is stupid, but functional. Should be event driven, probably.
-    sleeptime = 1.0/options.fps
 
     while True:
-        for i in range(options.numstrings):
-            phlostons[i].animate()
+        for i, hol in enumerate(vhols):
+            vhols[i].animate(options.forwards)
             pass
+
+        for hol in hols:
+            hol.render()
+        
         # Wait for next timetick
-        time.sleep(sleeptime)
+        time.sleep(options.anim_sleep)
         pass
     pass
 
