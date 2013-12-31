@@ -13,8 +13,6 @@ __license__ = "MIT"
 import os
 import logging
 
-NUM_GLOBES = holiday.Holiday.NUM_GLOBES
-
 # Set up logging
 log = logging.getLogger('base')
 handler = logging.StreamHandler()
@@ -86,6 +84,7 @@ class ButtonHoliday(HolidayBase):
             self.pipe = open(self.pipename, "wb")
         except:
             print "Couldn't open the pipe! Oh no!"
+            raise
             self.pipe = None
             pass
         
@@ -94,13 +93,13 @@ class ButtonHoliday(HolidayBase):
         Render globe colours to local pipe
         """
         rend = []
-        rend.append("0x000010")
-        rend.append("0x%06x" % self.pid)
+        rend.append("0x000010\n")
+        rend.append("0x%06x\n" % self.pid)
         for g in self.globes:
-            tripval = (g[0] << 16) + (g[1] << 8) + g[2]
-            rend.append("0x%06x" % tripval)
+            tripval = (g[0] * 65536) + (g[1] * 256) + g[2]
+            rend.append("0x%06X\n" % tripval)
             pass
-        self.pipe.write('\n'.join(rend))
+        self.pipe.write(''.join(rend))
         self.pipe.flush()
 
 class ButtonApp(object):

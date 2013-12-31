@@ -29,7 +29,7 @@ class UDPHoliday(HolidayBase):
     """
     A remote Holiday we talk to over the fast UDP
     """
-    def __init__(self, addr, port=9988):
+    def __init__(self, ipaddr, port=9988):
         """
         Initialise the REST Holiday remote address
         @param addr: A string of the remote address of form <ipaddr>:<port>
@@ -50,6 +50,6 @@ class UDPHoliday(HolidayBase):
             packet.append(g[2])
             pass
         # Send the packet to the Holiday
-        self.sock.sendto(packet, (self.addr, self.port))
+        self.sock.sendto(packet, (self.ipaddr, self.port))
         pass
     

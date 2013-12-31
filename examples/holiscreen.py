@@ -174,7 +174,7 @@ def render_to_hols(globelists, hols, width, height,
     # Your guess is as good as mine.
     holglobes = []
     for i in range(len(hols)):
-        holglobes.append( [[0x00,0x00,0x00]] * HolidaySecretAPI.NUM_GLOBES )
+        holglobes.append( [(0x00,0x00,0x00)] * HolidaySecretAPI.NUM_GLOBES )
         pass
 
     if orientation == 'vertical':

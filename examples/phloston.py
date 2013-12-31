@@ -15,22 +15,20 @@ import time
 import logging
 import optparse
 import math
-import webcolors
+import colorsys
 
-import holiday
-from secretapi.holidaysecretapi import HolidaySecretAPI
+from api.base import HolidayBase
+#from api.restholiday import RESTHoliday
+from api.udpholiday import UDPHoliday
 
-NUM_GLOBES = holiday.Holiday.NUM_GLOBES
-
-# Simulator default address
-SIM_ADDR = "localhost:8080"
+NUM_GLOBES = HolidayBase.NUM_GLOBES
 
 log = logging.getLogger(sys.argv[0])
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s [%(levelname)s]: %(message)s"))
 log.addHandler(handler)
 log.setLevel(logging.DEBUG)
-
+    
 class PhlostonOptions(optparse.OptionParser):
     """
     Command-line options parser
@@ -96,6 +94,7 @@ class PhlostonOptions(optparse.OptionParser):
             self.options.numstrings = len(self.args)
 
         if self.options.colorset:
+            import webcolors
             colorset = [ webcolors.hex_to_rgb(x) for x in self.options.colorset ]
             self.options.colorset = colorset
 
@@ -110,25 +109,24 @@ class vHoliday(object):
     FIXME: Enable a virtual Holiday to be longer than a real Holiday
     so we could span Holidays if we wanted to.
     """
-    def __init__(self, hols=None, start=0, length=holiday.Holiday.NUM_GLOBES, direction=True):
+    def __init__(self, hols=None, start=0, length=NUM_GLOBES, direction=True):
         """
         Each parameter is a list of one or more physical Holidays
 
-        @param addrlist: a list of (ipaddr, port, mode) tuples specifying
-               how to communicate with a Holiday (mode is TCP or UDP)
+        @param hols: a list of Holiday objects to talk to
         @param start: The starting offset for this virtual holiday
         @param length: the length of this virtual Holiday
         @param direction: If True, move from low to high idx, if False, from high to low idx
         """
         if hols is None:
             self.hols = []
-            self.hols.append(HolidaySecretAPI('localhost', 9988))
+            self.hols.append(UDPHoliday('localhost', 9988))
         else:
             self.hols = hols
             pass
 
         self.start = start
-        if length > holiday.Holiday.NUM_GLOBES:
+        if length > NUM_GLOBES:
             raise ValueError("Virtual Holidays cannot be longer than real ones.")
         self.length = length
 
@@ -195,14 +193,14 @@ class PhlostonString(vHoliday):
     Turns a Holiday into Phloston Paradise hotel evacuation lighting, from the movie
     The Fifth Element.
     """
-    def __init__(self, addrlist=None, start=0,
-                 length=holiday.Holiday.NUM_GLOBES, direction=True,
+    def __init__(self, hols=None, start=0,
+                 length=NUM_GLOBES, direction=True,
                  color=None, pattern=None):    
         """
         @param color: An (r,g,b) tuple of the lights colour
         @param pattern: An optional pattern of light colours to use
         """
-        super(PhlostonString, self).__init__(addrlist, start, length, direction)
+        super(PhlostonString, self).__init__(hols, start, length, direction)
 
         if pattern is not None:
             self.pattern = pattern
@@ -249,6 +247,15 @@ class PhlostonString(vHoliday):
             self.numlit = 0
             pass
 
+    def set_pattern(self, pattern):
+        if len(pattern) > self.length:
+            self.pattern = pattern[:self.length]
+        elif len(pattern) < self.length:
+            # blank pad out short patterns
+            self.pattern = pattern + ( [(0,0,0),] * (self.length - len(self.pattern)) )
+        else:
+            self.pattern = pattern
+        
 if __name__ == '__main__':
 
     usage = "Usage: %prog [options] [<addr:port>]"
@@ -260,18 +267,16 @@ if __name__ == '__main__':
     if len(args) > 1:
         for arg in args:
             hol_addr, hol_port = arg.split(':')
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)))
     else:
         hol_addr, hol_port = args[0].split(':')
         for i in range(options.numstrings):
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)+i))
             pass
 
     # Figure out how many 'virtual' strings we have
     vhols = []
 
-    # Track how many lights are lit
-    litnums = []
     if options.switchback:
         length = options.switchback
         pieces = int(math.floor(float(NUM_GLOBES) / options.switchback))
@@ -320,7 +325,6 @@ if __name__ == '__main__':
                                    length,
                                    direction)
         vhols.append(vhol)
-        litnums.append(0)
         pass
 
     while True:
