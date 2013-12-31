@@ -56,14 +56,15 @@ class PhlostonApp(ButtonHoliday, ButtonApp):
         h += hdelta
         # Wraparound hue
         if h < 0.0:
-            h = 1.0
+            h += 1.0
         elif h > 1.0:
-            h = 0.0
+            h -= 1.0
             pass
-
+        
         (r,g,b) = colorsys.hsv_to_rgb(h, s, v)
         # Convert to 0-255 range integers
-        self.t.set_color( (int(r*255), int(g*255), int(b*255)) )
+        newcol = (int(r*255.0), int(g*255.0), int(b*255.0))
+        self.t.set_color(newcol)
         
     def up(self):
         """
@@ -114,8 +115,35 @@ class PhlostonThread(threading.Thread):
 if __name__ == '__main__':
     app = PhlostonApp()
     app.start()
-    #app.up()
-    #app.up()
-    time.sleep(5)
+    time.sleep(1)
+
+    app.up()
+    time.sleep(0.1)
+    app.up()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+
+    time.sleep(0.1)
+    app.down()
+    
+    
+    time.sleep(3)
+
     app.stop()
     
