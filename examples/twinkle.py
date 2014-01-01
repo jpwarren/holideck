@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-Twinkling pretty lights on the Holiday tree
+Twinkling pretty lights on the Holiday
 """
 
 import optparse
@@ -79,14 +79,14 @@ class TwinkleOptions(optparse.OptionParser):
                         help="Maximum value difference from basecolor [%default]",
                         type="float", default=1.0 )
         
-        self.add_option('', '--chase', dest='chase',
+        self.add_option('', '--chase-forwards', dest='chase',
                         help="Lights chase around the string",
-                        action="store_true", default=False)
+                        action="store_true")
 
-        self.add_option('', '--chase-direction', dest='chase_direction',
-                        help="Set direction of chase, if chase enabled [%default]",
-                        type="choice", choices=['forward', 'backward'], default='forward')
-
+        self.add_option('', '--chase-backwards', dest='chase',
+                        help="Lights chase around the string",
+                        action="store_false")
+        
         self.add_option('', '--simplex-damper', dest='simplex_damper',
                         help="Amount of simplex noise dampening [%default]",
                         type="float", default=5.0)
@@ -268,7 +268,7 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
 
     # Chase mode?
     if options.chase:
-        if options.chase_direction == 'forward':
+        if options.chase_direction:
             # Rotate all globes around by one place
             oldglobes = hol.globes[:]
             hol.globes = oldglobes[1:]

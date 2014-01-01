@@ -60,14 +60,37 @@ class HolidayBase(object):
             raise ValueError("pattern length incorrect: %d != %d" % ( len(pattern), self.NUM_GLOBES) )
         self.globes = pattern[:]
 
-    def chase(self, direction="True"):
-        """Rotate all of the globes around - up if TRUE, down if FALSE"""
+    def chase(self, direction=True):
+        """
+        Rotate all globes around one step.
+        @param direction: Direction to rotate: up if True, down if False
+        """
+        if direction:
+            # Rotate all globes around by one place
+            oldglobes = self.globes[:]
+            self.globes = oldglobes[1:]
+            self.globes.append(oldglobes[0])
+            pass
+        else:
+            oldglobes = self.globes[:]
+            self.globes = oldglobes[:-1]
+            self.globes.insert(0, oldglobes[-1])
+            pass
         return
 
-    def rotate(self, newr, newg, newb, direction="True", ):
-        """Rotate all of the globes up if TRUE, down if FALSE
-        Set the new start of the string to the color values"""
-        return
+    def rotate(self, newr, newg, newb, direction=True):
+        """
+        Rotate all globes, just like chase, but replace the 'first'
+        globe with new color.
+        """
+        self.chase(direction)
+        if direction:
+            self.globes[-1] = (newr, newg, newb)
+            pass
+        else:
+            self.globes[0] = (newr, newg, newb)
+            pass
+        pass
 
     def render(self):
         raise NotImplementedError

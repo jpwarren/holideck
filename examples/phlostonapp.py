@@ -35,7 +35,7 @@ HUESTEP = 0.05
 # What color to start as. (r,g,b) tuple
 START_COLOR = (100,0,0)
 
-class PhlostonApp(ButtonHoliday, ButtonApp):
+class PhlostonApp(ButtonApp):
     """
     An app for a physical Holiday
     """
