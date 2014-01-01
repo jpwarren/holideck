@@ -14,13 +14,14 @@ import numpy
 import sys
 import logging
 
-from secretapi.holidaysecretapi import HolidaySecretAPI
+from api.udpholiday import UDPHoliday
+NUM_GLOBES = UDPHoliday.NUM_GLOBES
 
-# Height of display == number of globes in a string
-DEFAULT_HEIGHT = HolidaySecretAPI.NUM_GLOBES
+# Height of display 
+DEFAULT_HEIGHT = NUM_GLOBES
 
-# Width of display == number of strings we want to use
-DEFAULT_WIDTH = HolidaySecretAPI.NUM_GLOBES
+# Width of display 
+DEFAULT_WIDTH = NUM_GLOBES
 
 log = logging.getLogger(sys.argv[0])
 handler = logging.StreamHandler()
@@ -174,7 +175,7 @@ def render_to_hols(globelists, hols, width, height,
     # Your guess is as good as mine.
     holglobes = []
     for i in range(len(hols)):
-        holglobes.append( [(0x00,0x00,0x00)] * HolidaySecretAPI.NUM_GLOBES )
+        holglobes.append( [(0x00,0x00,0x00)] * NUM_GLOBES )
         pass
 
     if orientation == 'vertical':
@@ -185,7 +186,7 @@ def render_to_hols(globelists, hols, width, height,
     # If switchback mode is enabled, reverse order
     # of every second line, so they display the right
     # way on zigzag Holidays
-    pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / orientsize))
+    pieces = int(math.floor(float(NUM_GLOBES) / orientsize))
 
     # The globelist is a set of y values. List [0] is all the vertical globes
     # for x = 0, list [1] is the vertical x=1 globes, etc.
@@ -281,19 +282,19 @@ if __name__ == '__main__':
     if options.switchback:
         if options.orientation == 'vertical':
             height = options.switchback
-            pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / height))
+            pieces = int(math.floor(float(NUM_GLOBES) / height))
             width = options.numstrings * pieces
         else:
             width = options.switchback
-            pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / width))
+            pieces = int(math.floor(float(NUM_GLOBES) / width))
             height = options.numstrings * pieces
     else:
         if options.orientation == 'vertical':
-            height = HolidaySecretAPI.NUM_GLOBES
+            height = NUM_GLOBES
             pieces = options.numstrings
             width = options.numstrings
         else:
-            width = HolidaySecretAPI.NUM_GLOBES
+            width = NUM_GLOBES
             pieces = options.numstrings
             height = options.numstrings
             pass

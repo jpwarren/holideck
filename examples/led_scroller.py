@@ -9,9 +9,10 @@ import pygame
 import sys
 import math
 
-from secretapi.holidaysecretapi import HolidaySecretAPI
-
+from api.udpholiday import UDPHoliday
 from holiscreen import render_to_hols
+
+NUM_GLOBES = UDPHoliday.NUM_GLOBES
 
 # Initialise the font module
 pygame.font.init()
@@ -57,11 +58,15 @@ class LEDScrollerOptions(optparse.OptionParser):
         
         self.add_option('', '--fontsize', dest='fontsize',
                         help="Size of the font, in pixels [%default]",
-                        type="int", default="7")
+                        type="int")
 
         self.add_option('', '--color', dest='color',
                         help="Color of the font [%default]",
                         type="string", default="0xffffff")
+
+        self.add_option('-o', '--orientation', dest='orientation',
+                        help="Orientation of the strings [%default]",
+                        type="choice", choices=['vertical', 'horizontal'], default='vertical')
         
         self.add_option('', '--list-fonts', dest='listfonts',
                         help="List fonts available for use",
@@ -85,11 +90,34 @@ class LEDScrollerOptions(optparse.OptionParser):
         return self.options, self.args
 
     def postOptions(self):
+
+        if self.options.listfonts:
+            fontlist = pygame.font.get_fonts()
+            fontlist.sort()
+            print '\n'.join(fontlist)
+            sys.exit(0)
+        
         if len(self.args) < 1:
             self.error("Specify address and port of remote Holiday(s)")
             pass
         pass
 
+def pick_fontsize(fontname, height, text):
+    """
+    Figure out the appropriate font size based on the font chosen
+    and the height available in the display.
+    """
+    fontsize = 2
+    for fontsize in range(1000):
+        font = pygame.font.SysFont(fontname, fontsize)
+        size_req = font.size(text)
+        if size_req[1] > height+4:
+            fontsize -= 1
+            break
+            pass
+        pass
+    return fontsize
+    
 def text_to_globes(text, width, height,
                    color=(255,255,255),
                    offset_left=0):
@@ -108,7 +136,12 @@ def text_to_globes(text, width, height,
     """
     #font = pygame.font.SysFont("None", 10)
 
-    font = pygame.font.SysFont(options.fontname, options.fontsize)
+    if options.fontsize is None:
+        fontsize = pick_fontsize(options.fontname, height, text)
+    else:
+        fontsize = options.fontsize
+
+    font = pygame.font.SysFont(options.fontname, fontsize)
     color = pygame.Color(color)
 
     surface = font.render(text, options.antialias, color, (0,0,0) )
@@ -117,7 +150,7 @@ def text_to_globes(text, width, height,
 
     # Now fetch the pixels as an array
     pa = pygame.PixelArray(surface)
-    for i in range(len(pa[0])):
+    for i in range(len(pa[1])):
         globes = []
         pixels = pa[:,i]
         pixvals = [ pa.surface.unmap_rgb(x) for x in pixels ]
@@ -147,28 +180,34 @@ if __name__ == '__main__':
     optparse = LEDScrollerOptions(usage=usage)
 
     options, args = optparse.parseOptions()
+
+    # How big is our canvas window?
     
     if options.switchback:
         width = options.switchback
-        pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / width))        
-        height = pieces * options.numstrings
+        pieces = int(math.floor(float(NUM_GLOBES) / width))
+        height = pieces
     else:
         height = options.numstrings
-        width = HolidaySecretAPI.NUM_GLOBES
+        width = NUM_GLOBES
+        pass
 
-    if options.listfonts:
-        print '\n'.join(pygame.font.get_fonts())
-        sys.exit(0)
+    # Orientation setup
+    if options.orientation == 'vertical':
+        old_w = width
+        width = height
+        height = old_w
+        pass
 
     hols = []
     if len(args) > 1:
         for arg in args:
             hol_addr, hol_port = arg.split(':')
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)))
     else:
         hol_addr, hol_port = args[0].split(':')
         for i in range(options.numstrings):
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)+i))
             pass
 
     # The text to render is passed in from stdin
@@ -198,7 +237,7 @@ if __name__ == '__main__':
             pass
         #print "renderlist:", render_glist
         render_to_hols(render_glist, hols, width, height,
-                       orientation='horizontal',
+                       orientation=options.orientation,
                        switchback=options.switchback)
         offset += 1
         if offset > len(glist[0]):
