@@ -32,7 +32,7 @@ def load_patternfile(filename):
 MODES = [
     # candela mode
     {'twinkle_algo': 'simplex',
-     'simplex_damper': 5.0,
+     'simplex_damper': 4.0,
      'init_pattern': [(176, 119, 31),] * ButtonHoliday.NUM_GLOBES,
      'chase': None,
      'snoozetime': 0.1,
@@ -40,7 +40,7 @@ MODES = [
 
     # Xmas twinkle
     {'twinkle_algo': 'simplex',
-     'simplex_damper': 5.0,
+     'simplex_damper': 4.0,
      'init_pattern': load_patternfile(os.path.join(PATTERN_DIR, 'xmas.json')),
      'chase': None,
      'snoozetime': 0.1,
@@ -55,7 +55,7 @@ MODES = [
 
     # Australian Green and Gold twinkle
     {'twinkle_algo': 'simplex',
-     'simplex_damper': 5.0,
+     'simplex_damper': 4.0,
      'init_pattern': load_patternfile(os.path.join(PATTERN_DIR, 'greenandgold.json')),
      'chase': None,
      'snoozetime': 0.1,
@@ -64,7 +64,7 @@ MODES = [
     # Australian Green and Gold chaser
     {'twinkle_algo': 'chase_only',
      'init_pattern': load_patternfile(os.path.join(PATTERN_DIR, 'greenandgold.json')),
-     'simplex_damper': 5.0,
+     'simplex_damper': 4.0,
      'chase': True,
      'snoozetime': 0.1,
      },
@@ -121,7 +121,7 @@ class Twinkler(object):
 
     def twinkle_simplex(self, idx):
         nv = raw_noise_2d(self.noise_array[idx],
-                          random.random()) / self.options.get('simplex_damper', 5.0)
+                          random.random()) / self.options.get('simplex_damper', 4.0)
         self.noise_array[idx] += nv
         if self.noise_array[idx] > 1.0:
             self.noise_array[idx] = 1.0
