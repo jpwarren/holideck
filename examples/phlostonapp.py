@@ -27,7 +27,7 @@ log.addHandler(handler)
 log.setLevel(logging.DEBUG)
 
 # Amount of time between frames of animation
-SNOOZETIME = 0.05
+SNOOZETIME = 0.02
 
 # Amount of hue to change when Up/Down button is pressed (0.0 - 1.0)
 HUESTEP = 0.05

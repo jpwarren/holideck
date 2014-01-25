@@ -35,7 +35,7 @@ MODES = [
      'simplex_damper': 4.0,
      'init_pattern': [(176, 119, 31),] * ButtonHoliday.NUM_GLOBES,
      'chase': None,
-     'snoozetime': 0.1,
+     'snoozetime': 0.04,
      },
 
     # Xmas twinkle
@@ -43,7 +43,7 @@ MODES = [
      'simplex_damper': 4.0,
      'init_pattern': load_patternfile(os.path.join(PATTERN_DIR, 'xmas.json')),
      'chase': None,
-     'snoozetime': 0.1,
+     'snoozetime': 0.04,
      },
 
     # Xmas chase
@@ -58,7 +58,7 @@ MODES = [
      'simplex_damper': 4.0,
      'init_pattern': load_patternfile(os.path.join(PATTERN_DIR, 'greenandgold.json')),
      'chase': None,
-     'snoozetime': 0.1,
+     'snoozetime': 0.04,
      },
     
     # Australian Green and Gold chaser
