@@ -193,9 +193,16 @@ def get_val_color(val, scheme='default'):
 
     elif scheme == 'yellow':
         r, g, b = 30 + 225 * val, 30 + 225 * val, 0
-
         pass
 
+    elif scheme == 'oz':
+        if val < 0.4:
+            r, g, b = 0, 30 + 225 * val, 0
+        else:
+            r, g, b = 30 + 225 * val, 30 + 225 * val, 0
+            pass
+        pass
+    
     r = int(r)
     g = int(g)
     b = int(b)
@@ -221,7 +228,7 @@ class HolibeatOptions(optparse.OptionParser):
 
         self.add_option('-c', '--colorscheme', dest='colorscheme',
                         help=" [%default]",
-                        type="choice", choices = ['default', 'blue', 'green', 'red', 'yellow'],
+                        type="choice", choices = ['default', 'blue', 'green', 'red', 'yellow', 'oz'],
                         default='default')
         
         self.add_option('-b', '--buckets', dest='numbuckets',
