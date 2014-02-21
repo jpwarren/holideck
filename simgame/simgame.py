@@ -26,7 +26,7 @@ class BaseOptParser(optparse.OptionParser):
     def addOptions(self):
         self.add_option('-f', '--fps', dest='fps',
                         help="Frames per second, used to slow down simulator",
-                        type="int")
+                        type="int", default=30)
         self.add_option('-n', '--numstrings', dest='numstrings',
                         help="Number of Holiday strings to simulate [%default]",
                         type="int", default=1)
@@ -167,43 +167,24 @@ class SimRunner(object):
 
         screen = pygame.display.set_mode([self.screen_x, self.screen_y])
         screen.fill((0,0,0))
-        mainloop, x, y, color, delta, fps =  True, 25 , 0, (32,32,32), 1, 1000
+        running, x, y, color, delta, fps =  True, 25 , 0, (32,32,32), 1, 1000
         Clock = pygame.time.Clock()
 
-        while mainloop:
-            if self.options.fps:
-                tickFPS = Clock.tick(self.options.fps)
-                pass
-            # Move the simulator forward one tick
-            if not paused:
-                pass
+        DISPLAY_REFRESH = pygame.USEREVENT
+        pygame.time.set_timer(DISPLAY_REFRESH, int(1000.0/self.options.fps))
+        color = (255,255,255)        
 
-            pygame.display.set_caption("Press Esc or q to quit. p to pause. r to reset. FPS: %.2f" % (Clock.get_fps()))
+        while running:
 
-            color = (255,255,255)
-
-            # Black screen and update timer
-            screen.fill((0,0,0))
-            
-            screen.blit(self.myFont.render("Holiday by MooresCloud Simulator", True, (color)), (x,y))
-            screen.blit(self.myFont.render("(c) Justin Warren <justin@eigenmagic.com>", True, (color)), (x,y+self.myFont.get_height()))
-            
-            # Let the strings receive and process data
-            self.recv_data()
-            
-            # Draw the Holiday strings
-            self.draw_strings(screen)
-            #sys.exit(1)
-            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    mainloop = False
+                    running = False
 
                 elif event.type == pygame.KEYDOWN:
 
                     # If quite key pressed, flag for exit
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
-                        mainloop = False 
+                        running = False 
 
                     # Toggle pause
                     elif event.key == pygame.K_p:
@@ -217,9 +198,30 @@ class SimRunner(object):
                     # reset all strings to blank
                     elif event.key == pygame.K_r:
                         self.blank_strings()
-                pass
+                        pass
+                    pass
 
-            pygame.display.update()
+                elif event.type == DISPLAY_REFRESH:
+
+                    pygame.display.set_caption("Press Esc or q to quit. p to pause. r to reset. FPS: %.2f" % (Clock.get_fps()))
+
+                    # Black screen and update timer
+                    screen.fill((0,0,0))
+            
+                    screen.blit(self.myFont.render("Holiday by MooresCloud Simulator", True, (color)), (x,y))
+                    screen.blit(self.myFont.render("(c) Justin Warren <justin@eigenmagic.com>", True, (color)), (x,y+self.myFont.get_height()))
+            
+                    # Let the strings receive and process data
+                    self.recv_data()
+            
+                    # Draw the Holiday strings
+                    self.draw_strings(screen)
+
+                    # Update the screen
+                    pygame.display.update()
+                    pass
+                pass
+            pygame.time.wait(0)
             pass
         pygame.quit()
 
