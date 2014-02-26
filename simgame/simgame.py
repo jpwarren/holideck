@@ -59,8 +59,16 @@ class BaseOptParser(optparse.OptionParser):
                         help="'Switchback' strings, make a single string display like its "
                         "more than one every m globes",
                         type="int")
-        pass
 
+        self.add_option('', '--no-tcp', dest='notcp',
+                        help="Disable TCP listener.",
+                        action="store_true", default=False)
+
+        self.add_option('', '--no-udp', dest='noudp',
+                        help="Disable UDP listener.",
+                        action="store_true", default=False)
+        pass
+    
     def parseOptions(self):
         """
         Emulate twistedmatrix options parser API
@@ -114,7 +122,8 @@ class SimRunner(object):
         
         self.HolidayList = [ ]
         for i in range(0, self.numstrings):
-            self.HolidayList.append( HolidayRemote() )
+            self.HolidayList.append( HolidayRemote(notcp=self.options.notcp,
+                                                   noudp=self.options.noudp) )
             pass
 
         if self.options.switchback:
@@ -235,8 +244,10 @@ class SimRunner(object):
         Process any data each simulated string may have received
         """
         for hol in self.HolidayList:
-            hol.recv_udp()
-            hol.recv_tcp()
+            if not self.options.noudp:
+                hol.recv_udp()
+            if not self.options.notcp:
+                hol.recv_tcp()
             pass
 
     def blank_strings(self):

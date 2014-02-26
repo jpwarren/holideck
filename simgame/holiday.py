@@ -27,43 +27,51 @@ class HolidayRemote(object):
     NUM_GLOBES = 50
     def __init__(self, remote=False, addr='',
                  tcpport=None,
-                 udpport=None):
+                 udpport=None,
+                 notcp=False,
+                 noudp=False):
 
         # Initialise globes to zero
         self.globes = [ [0x00, 0x00, 0x00] ] * self.NUM_GLOBES
 
+        self.notcp = notcp
+        self.noudp = noudp
+
         if not remote:
             self.addr = addr
 
-            if udpport is None:
-                bound_port = False
-                for udpport in range(9988, 10100):
-                    try:
-                        self.bind_udp(udpport)
-                        bound_port = True
-                        break
-                    except socket.error, e:
-                        num, s = e
-                        # Try again if port is in use, else raise
-                        if num != 98:
-                            raise
+            if not noudp:
+                if udpport is None:
+                    bound_port = False
+                    for udpport in range(9988, 10100):
+                        try:
+                            self.bind_udp(udpport)
+                            bound_port = True
+                            break
+                        except socket.error, e:
+                            num, s = e
+                            # Try again if port is in use, else raise
+                            if num != 98:
+                                raise
+                            pass
                         pass
+                    # If we get this far, bail out
+                    if not bound_port:
+                        raise ValueError("Can't find available UDP port in range 9988 to 10100")
+
+                else:
+                    self.bind_udp(udpport)
                     pass
-                # If we get this far, bail out
-                if not bound_port:
-                    raise ValueError("Can't find available UDP port in range 9988 to 10100")
+                print "UDP listening on (%s, %s)" % (self.addr, self.udpport)
+                pass
             
-            else:
-                self.bind_udp(udpport)
-                
-            print "UDP listening on (%s, %s)" % (self.addr, self.udpport)
-
             # Set up REST API on a TCP port
-            self.q = Queue()
+            if not notcp:    
+                self.q = Queue()
 
-            self.iop = Process(target=iotas.run, kwargs={ 'port': 8080,
+                self.iop = Process(target=iotas.run, kwargs={ 'port': 8080,
                                                           'queue': self.q })
-            self.iop.start()
+                self.iop.start()
         else:
             raise NotImplementedError("Listening Simulator only. Does not send to remote devices.")
 
@@ -71,7 +79,8 @@ class HolidayRemote(object):
         """
         Force shutdown of processes
         """
-        self.iop.terminate()
+        if hasattr(self, 'iop'):
+            self.iop.terminate()
 
     def __del__(self):
         self.exit()

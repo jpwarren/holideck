@@ -124,16 +124,17 @@ if __name__ == '__main__':
             break
 
         # Resize the frame into the resolution of our Holiday array
-        frame = cv2.resize(frame, newsize, interpolation=cv2.INTER_AREA)
+        holframe = cv2.resize(frame, newsize, interpolation=cv2.INTER_CUBIC)
 
         # The colours are in the wrong format, so convert them
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        #cv2.imshow('frame', frame)
+        holframe = cv2.cvtColor(holframe, cv2.COLOR_BGR2RGB)
+        
+        # Display the original frame, for the demo
+        cv2.imshow('holivid monitor display', frame)
 
         # A frame is just a Numpy array of pixel values, i.e. globelists. We need to take
         # these values and map them onto our holiday array.
-        render_to_hols(frame, hols, width, height,
+        render_to_hols(holframe, hols, width, height,
                        options.orientation, options.switchback)
 
         # Wait period between keycapture (in milliseconds)
