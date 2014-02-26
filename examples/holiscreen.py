@@ -220,10 +220,8 @@ def render_to_hols(globelists, hols, width, height,
 
             else:
                 basenum = (i % pieces) * orientsize
-
                 if switchback:
                     holid = i / pieces
-                    #log.debug("basenum: %d", basenum)
                 else:
                     holid = i
                     basenum = 0
