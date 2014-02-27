@@ -51,6 +51,10 @@ class BaseOptParser(optparse.OptionParser):
                         help="Orientation of the strings [%default]",
                         type="choice", choices=['vertical', 'horizontal'], default='vertical')
 
+        self.add_option('', '--flipped', dest='flipped',
+                        help="Flip direction of the strings [%default]",
+                        action="store_true", default=False)
+
         self.add_option('', '--spacing', dest='spacing',
                         help="Spacing between strings, in pixels. Overrides dynamic even spacing",
                         type="int")
@@ -67,6 +71,8 @@ class BaseOptParser(optparse.OptionParser):
         self.add_option('', '--no-udp', dest='noudp',
                         help="Disable UDP listener.",
                         action="store_true", default=False)
+
+
         pass
     
     def parseOptions(self):
@@ -291,15 +297,22 @@ class SimRunner(object):
                                                 min((piece+1)*self.bulbs_per_piece, hol.NUM_GLOBES)
                                                 )
                                           ):
-                        # If even, start at the top and go down
+                        # If even, start at the top and go down, unless flipped
                         if not piece % 2:
-                            bulb_y = self.start_y + self.string_header + (m * offset_per_bulb)
+                            if self.options.flipped:
+                                bulb_y = self.start_y + self.string_header + ( (self.bulbs_per_piece-1-m) * offset_per_bulb)
+                            else:
+                                bulb_y = self.start_y + self.string_header + (m * offset_per_bulb)
 
                         # if odd, go from bottom to top
                         else:
-                            bulb_y = self.start_y + self.string_header + ( (self.bulbs_per_piece-1-m) * offset_per_bulb)
-                            pass
+                            if self.options.flipped:
+                                bulb_y = self.start_y + self.string_header + (m * offset_per_bulb)
 
+                            else:
+                                bulb_y = self.start_y + self.string_header + ( (self.bulbs_per_piece-1-m) * offset_per_bulb)
+                                pass
+                            
                         # Fetch the globe color for globe j
                         r, g, b = hol.globes[j]
                         pygame.draw.circle(screen,

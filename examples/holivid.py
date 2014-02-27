@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 import math
 import optparse
+import time
 
 from api.udpholiday import UDPHoliday
 from holiscreen import render_to_hols
@@ -117,6 +118,7 @@ if __name__ == '__main__':
     skipframe = False
     
     while True:
+        loopstart = time.time()
         ret, frame = cap.read()
 
         if ret != True:
@@ -139,7 +141,16 @@ if __name__ == '__main__':
 
         # Wait period between keycapture (in milliseconds)
         # This gives us approximately the right number of frames per second
-        wait_time = int(1000/options.fps)
+        wait_time = 1000/options.fps
+
+        # Figure out how long the wait_time would be without the
+        # processing time
+
+        loopend = time.time()
+        # Adjust waiting based on how long it takes us to process
+        process_time = (loopend - loopstart) * 1000
+
+        wait_time = int(wait_time - process_time)
         if cv2.waitKey(wait_time) & 0xFF == ord('q'):
             break
         pass

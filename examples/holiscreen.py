@@ -120,6 +120,10 @@ class HoliscreenOptions(optparse.OptionParser):
         self.add_option('-o', '--orientation', dest='orientation',
                         help="Orientation of the strings [%default]",
                         type="choice", choices=['vertical', 'horizontal'], default='vertical')
+
+        self.add_option('', '--flipped', dest='flipped',
+                        help="Flip direction of the strings [%default]",
+                        action="store_true", default=False)
         
         self.add_option('', '--switchback', dest='switchback',
                         help="'Switchback' strings, make a single string display like its "
@@ -152,7 +156,7 @@ class HoliscreenOptions(optparse.OptionParser):
 
 def render_image(img, hols, width, height,
                  orientation='vertical',
-                 switchback=None):
+                 switchback=None, flipped=False):
     """
     Render an image to a set of remote Holidays
 
@@ -161,10 +165,11 @@ def render_image(img, hols, width, height,
     #log.debug("w x h: %d x %d", width, height)
     globelists = image_to_globes(img, width, height)
     #log.debug("len globelists: %d", len(globelists))
-    render_to_hols(globelists, hols, width, height, orientation, switchback)
+    render_to_hols(globelists, hols, width, height, orientation, switchback, flipped)
 
 def render_to_hols(globelists, hols, width, height,
-                   orientation='vertical', switchback=None):
+                   orientation='vertical', switchback=None,
+                   flipped=True):
     """
     Render a set of globe values to a set of Holidays
     """
@@ -220,6 +225,7 @@ def render_to_hols(globelists, hols, width, height,
 
             else:
                 basenum = (i % pieces) * orientsize
+                    
                 if switchback:
                     holid = i / pieces
                 else:
@@ -227,13 +233,19 @@ def render_to_hols(globelists, hols, width, height,
                     basenum = 0
                     
                 if not (i % pieces) % 2:
-                    globe_idx = basenum + l
+                    if not flipped:
+                        globe_idx = basenum + l
+                    else:
+                        globe_idx = basenum + (orientsize-l) - 1                        
                 else:
-                    globe_idx = basenum + (orientsize-l) - 1
+                    if not flipped:
+                        globe_idx = basenum + (orientsize-l) - 1
+                    else:
+                        globe_idx = basenum + l                        
                     pass
                 
             try:
-                #log.debug("holid: %d, globeidx: %d", holid, globe_idx)
+                #log.debug("holid: %d, l: %d, i: %d, basenum: %d, globeidx: %d", holid, l, i, basenum, globe_idx)
                 hol = hols[holid]
             except IndexError:
                 log.error("Not enough Holidays for number of screen lines. Need at least %d." % (holid+1,))
@@ -242,7 +254,7 @@ def render_to_hols(globelists, hols, width, height,
             try:
                 holglobes[holid][globe_idx] = [r,g,b]
             except IndexError:
-                log.debug("Error at holid %d, globeidx %d", holid, globe_idx)
+                log.error("Error at holid %d, globeidx %d", holid, globe_idx)
                 raise
 
             #print "line: %d, holid: %d, globe: %d, val: (%d, %d, %d)" % (l, holid, globe_idx, r,g,b)
@@ -267,11 +279,11 @@ if __name__ == '__main__':
     if len(args) > 1:
         for arg in args:
             hol_addr, hol_port = arg.split(':')
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)))
     else:
         hol_addr, hol_port = args[0].split(':')
         for i in range(options.numstrings):
-            hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
+            hols.append(UDPHoliday(ipaddr=hol_addr, port=int(hol_port)+i))
             pass
         pass
     
@@ -312,7 +324,8 @@ if __name__ == '__main__':
 
     if isanimated and options.animate:
         # render first frame
-        render_image(img, hols, width, height, options.orientation, options.switchback)
+        render_image(img, hols, width, height, options.orientation,
+                     options.switchback, options.flipped)
         while True:
             # get the next frame after a short delay
             time.sleep(options.anim_sleep)
@@ -322,9 +335,11 @@ if __name__ == '__main__':
             except EOFError:
                 img.seek(0)
                 pass
-            render_image(img, hols, width, height, options.orientation, options.switchback)
+            render_image(img, hols, width, height, options.orientation,
+                         options.switchback, options.flipped)
             pass
         pass
     else:
-        render_image(img, hols, width, height, options.orientation, options.switchback)
+        render_image(img, hols, width, height, options.orientation,
+                     options.switchback, options.flipped)
         pass
