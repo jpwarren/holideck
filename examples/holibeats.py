@@ -313,15 +313,15 @@ if __name__ == '__main__':
     nyq_rate = sample_rate / 2.0
 
     # A Hamming window, to help with putting frequencies into
-    # different buckets.
+    # different buckets. Use twice as many as strings, because everything high is boring.
     window = numpy.hamming(BUFSIZE*2)
 
     if options.switchback:
         pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / options.switchback))
-        numbuckets = pieces * options.numstrings
+        numbuckets = pieces * options.numstrings * 2
     else:
         pieces = 1
-        numbuckets = options.numstrings
+        numbuckets = options.numstrings * 2
         pass
 
     # Allow manual override of number of buckets
@@ -343,25 +343,34 @@ if __name__ == '__main__':
             hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
             pass
     
-    # Build the list of cutoff frequences as powers of 10
+    # Build the list of cutoff frequences as powers of 2
     cutoffs = []
-    exp = [2, 3, 4]
+    base = 20
+    
+    maxfreq = 20000 # anything higher than this is super boring
+    steps = int(math.log(maxfreq, base))
+    exp = range(1, steps, 1)
+
+    sublist = range(0, base)
+    
     for x in exp:
-        for i in range(1,10):
-            for sub in [0, 1, 2, 3]:
-                cutoffs.append( i*(10**x) + sub*(10**x/4) )
+        for i in range(1, base, 1):
+            for sub in sublist:
+                cutoffs.append( i*(base**x) + sub*(base**x/len(sublist)) )
                 pass
             pass
         pass
 
     # ignore anything higher than 10kHz because it's boring
-    cutoffs = [ x for x in cutoffs if x <= 10000 ]
+    cutoffs = [ x for x in cutoffs if x <= maxfreq ]
     #print cutoffs
-    
+
     # chunk cutoffs based on number of strings,
     # and use the max freq val of the chunk for our new cutoff
     cutoffs = [ max(c) for c in chunks(cutoffs, len(cutoffs)/numbuckets) ]
-
+    #print cutoffs
+    #sys.exit(1)
+    
     # Used for auto-ranging of display
     maxval = 0
     maxtime = datetime.datetime.now()
