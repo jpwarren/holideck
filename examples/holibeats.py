@@ -260,10 +260,9 @@ class HolibeatOptions(optparse.OptionParser):
                         help="Manually set the maximum height value for buckets",
                         type="float")
         
-        self.add_option('', '--quietseconds', dest='quiet_seconds',
-                        help="Period of relative quiet to reset autoranging [%default]",
-                        type="int", default=5)
-
+        self.add_option('', '--avgvals', dest='num_maxvals',
+                        help="Number of samples to calculate moving average for maxval over.",
+                        type="int", default=50)
         
     def parseOptions(self):
         """
@@ -372,8 +371,8 @@ if __name__ == '__main__':
     #sys.exit(1)
     
     # Used for auto-ranging of display
-    maxval = 0
-    maxtime = datetime.datetime.now()
+    maxvals = []
+    current_maxval = 0
 
     # Time limiting bits to slow down the UDP firehose
     # This is stupid, but functional. Should be event driven, probably.
@@ -460,29 +459,27 @@ if __name__ == '__main__':
         # particularly for anything not classical music.
         visdata[0] = visdata[0] / 1.8
 
+        bucket_maxval = 0
         for i in range(0, numbuckets):
             # Update auto-ranging information
-            if visdata[i] > maxval:
-                maxval = visdata[i]
-                #log.debug("maxval reset: %f", maxval)
-                maxtime = datetime.datetime.now()
+            if visdata[i] > bucket_maxval:
+                bucket_maxval = visdata[i]
                 pass
             pass
 
-        # If the maxval was set more than n seconds ago, start
-        # reducing the maxval gradually by x% per loop until
-        # we have to set the max again
-        if datetime.datetime.now() - maxtime > datetime.timedelta(seconds=options.quiet_seconds):
-            #log.debug("maxval %f is old. decreasing...", maxval)
-            maxval = maxval - (maxval * 0.01)
-            if maxval < 0:
-                maxval = 0
-            pass
+        # new maxval is the average of the last n maxvals
+        maxvals.insert(0, bucket_maxval)
+        maxvals = maxvals[:options.num_maxvals]
+
+        current_maxval = numpy.average(maxvals)
+        #log.debug("maxval reset: %f", maxval)
+
+        #print "current max:", current_maxval
         
         # Send data to Holidays
         send_blinken(hols, visdata, pieces,
                      switchback=options.switchback,
-                     maxval=maxval,
+                     maxval=current_maxval,
                      maxheight=options.maxheight,
                      autorange=options.autorange,
                      colorscheme=options.colorscheme)
