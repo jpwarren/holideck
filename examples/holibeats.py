@@ -317,10 +317,10 @@ if __name__ == '__main__':
 
     if options.switchback:
         pieces = int(math.floor(float(HolidaySecretAPI.NUM_GLOBES) / options.switchback))
-        numbuckets = pieces * options.numstrings * 2
+        numbuckets = int(pieces * options.numstrings * 1.5)
     else:
         pieces = 1
-        numbuckets = options.numstrings * 2
+        numbuckets = int(options.numstrings * 1.5)
         pass
 
     # Allow manual override of number of buckets
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     base = 20
     
     maxfreq = 20000 # anything higher than this is super boring
-    steps = int(math.log(maxfreq, base))
+    steps = int(math.log(maxfreq, base)) + 1
     exp = range(1, steps, 1)
 
     sublist = range(0, base)
