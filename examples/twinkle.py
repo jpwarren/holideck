@@ -22,6 +22,8 @@ handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s [%(levelname)s]: %
 log.addHandler(handler)
 log.setLevel(logging.DEBUG)
 
+DEFAULT_HOL_PORT = 9988
+
 class TwinkleOptions(optparse.OptionParser):
     """
     Command-line options parser
@@ -53,7 +55,11 @@ class TwinkleOptions(optparse.OptionParser):
 
         self.add_option('-t', '--twinkle-algo', dest='twinkle_algo',
                         help="Algorithm to use for twinkling [%default]",
-                        type="choice", choices=['random', 'simplex', 'throb'], default='random')
+                        type="choice", choices=['random', 'simplex', 'throb'], default='simplex')
+
+        self.add_option('-i', '--init-only', dest='initonly',
+                        help="Initialize string(s) and exit",
+                        action="store_true")
         
         self.add_option('-H', '--HUESTEP', dest='huestep_max',
                         help="Maximum step between hues [%default]",
@@ -315,7 +321,7 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
         pass
     # Chase mode?
     if options.chase:
-        if options.chase_direction:
+        if options.chase:
             # Rotate all globes around by one place
             oldglobes = hol.globes[:]
             hol.globes = oldglobes[1:]
@@ -344,12 +350,23 @@ if __name__ == '__main__':
 
     # List of holiday noise patterns
     hol_noise = []
+
+    def split_addr_args(arg):
+        split_args = arg.split(':')
+        if len(split_args) == 1:
+            hol_addr = split_args[0]
+            hol_port = DEFAULT_HOL_PORT
+        else:
+            hol_addr = split_args[0]
+            hol_port = split_args[1]
+        return hol_addr, hol_port
+    
     if len(args) > 1:
         for arg in args:
-            hol_addr, hol_port = arg.split(':')
+            hol_addr, hol_port = split_addr_args(arg)
             hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)))
     else:
-        hol_addr, hol_port = args[0].split(':')
+        hol_addr, hol_port = split_addr_args(args[0])
         for i in range(options.numstrings):
             hols.append(HolidaySecretAPI(addr=hol_addr, port=int(hol_port)+i))
             pass
@@ -360,6 +377,9 @@ if __name__ == '__main__':
         hol_noise.append(None)
         pass
 
+    if options.initonly:
+        sys.exit(0)
+    
     while True:
         for i, hol in enumerate(hols):
             noise = twinkle_holiday(hol, options, hol_inits[i], hol_noise[i])
