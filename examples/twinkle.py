@@ -55,7 +55,7 @@ class TwinkleOptions(optparse.OptionParser):
 
         self.add_option('-t', '--twinkle-algo', dest='twinkle_algo',
                         help="Algorithm to use for twinkling [%default]",
-                        type="choice", choices=['random', 'simplex', 'throb'], default='simplex')
+                        type="choice", choices=['random', 'simplex', 'throb', 'chase'], default='simplex')
 
         self.add_option('-i', '--init-only', dest='initonly',
                         help="Initialize string(s) and exit",
@@ -75,15 +75,15 @@ class TwinkleOptions(optparse.OptionParser):
 
         self.add_option('', '--huediff-max', dest='huediff_max',
                         help="Maximum hue difference from basecolor [%default]",
-                        type="float", default=1.0 )
+                        type="float", default=0.0 )
 
         self.add_option('', '--satdiff-max', dest='satdiff_max',
                         help="Maximum saturation difference from basecolor [%default]",
-                        type="float", default=1.0 )
+                        type="float", default=0.0 )
 
         self.add_option('', '--valdiff-max', dest='valdiff_max',
                         help="Maximum value difference from basecolor [%default]",
-                        type="float", default=1.0 )
+                        type="float", default=0.0 )
         
         self.add_option('', '--chase-forwards', dest='chase',
                         help="Lights chase around the string",
@@ -95,7 +95,7 @@ class TwinkleOptions(optparse.OptionParser):
         
         self.add_option('', '--simplex-damper', dest='simplex_damper',
                         help="Amount of simplex noise dampening [%default]",
-                        type="float", default=5.0)
+                        type="float", default=2.0)
 
         self.add_option('', '--throb-speed', dest='throb_speed',
                         help="Speed of throb animation [%default]",
@@ -230,11 +230,12 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
                     noise_array[idx] = -1.0
                     pass
 
-                ranger = (noise_array[idx] + 1.0) / 2.0
-
+                ranger = (noise_array[idx] + 1.0) / 1.0
+                #log.debug("ranger: %f", ranger)
                 # Adjust colour. If basecolor, adjust from basecolor
                 if options.basecolor:
                     (base_r, base_g, base_b) = webcolors.hex_to_rgb(options.basecolor)
+                    #log.debug("adjusting from base: %d %d %d", base_r, base_g, base_b)
                     r = int(base_r * ranger)
                     g = int(base_g * ranger)
                     b = int(base_b * ranger)
@@ -242,13 +243,23 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
                 else:
                     # adjust from original color
                     (base_r, base_g, base_b) = init_pattern[idx]
+                    #log.debug("init pattern: %s", init_pattern[idx])
                     #log.debug("adjusting from orig: %d %d %d", base_r, base_g, base_b)
                     r = int(base_r * ranger)
+                    #log.debug("adjusted red from orig: %d %d %d", base_r, base_g, base_b)
                     g = int(base_g * ranger)
                     b = int(base_b * ranger)
                     pass
-                hol.setglobe(idx, r, g, b)
 
+                if r > 255:
+                    r = 255
+                if g > 255:
+                    g = 255
+                if b > 255:
+                    b = 255
+                    
+                hol.setglobe(idx, r, g, b)
+                #log.debug("init pattern: %s", init_pattern[idx])
             else:
                 # % chance of updating a given globe
                 if random.random() < options.change_chance:
@@ -319,8 +330,8 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
                 pass
             pass
         pass
-    # Chase mode?
-    if options.chase:
+    elif options.twinkle_algo in ['chase']:
+        # Chase mode?
         if options.chase:
             # Rotate all globes around by one place
             oldglobes = hol.globes[:]
@@ -328,11 +339,11 @@ def twinkle_holiday(hol, options, init_pattern, noise_array=None):
             hol.globes.append(oldglobes[0])
             pass
         else:
-            log.debug("old: %s", hol.globes)
+            #log.debug("old: %s", hol.globes)
             oldglobes = hol.globes[:]
             hol.globes = oldglobes[:-1]
             hol.globes.insert(0, oldglobes[-1])
-            log.debug("new: %s", hol.globes)
+            #log.debug("new: %s", hol.globes)
             pass
     
     hol.render()
