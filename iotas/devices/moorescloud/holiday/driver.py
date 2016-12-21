@@ -9,8 +9,8 @@ Copyright (c) 2013, Mark Pesce.
 License: MIT (see LICENSE for details)
 """
 
-__author__ = 'Mark Pesce'
-__version__ = '1.0b3'
+__author__ = 'Justin Warren'
+__version__ = '1.1b1'
 __license__ = 'MIT'
 
 import subprocess, time, os
@@ -20,35 +20,6 @@ from multiprocessing import Queue
 from bottle import request, abort
 
 class Holiday:
-# 	def old__init__(self, remote=False, address='sim', name='nameless'):
-# 		self.numleds = 50
-# 		self.leds = []			# Array of LED values. This may actually exist elsewhere eventually.
-# 		self.address = ''
-# 		self.name = name
-# 		self.isSim = False
-# 
-# 		if remote == False:
-# 			self.remote = False
-# 			if address == 'sim':
-# 				self.pipename = os.path.join(os.path.expanduser('~'), 'pipelights.fifo')
-# 				self.address = address
-# 			else:
-# 				self.pipename = "/run/pipelights.fifo"
-# 				self.address = address
-# 			try:
-# 				self.pipe = open(self.pipename,"wb")
-# 			except:
-# 				print "Couldn't open the pipe, there's gonna be trouble!"
-# 			ln = 0
-# 		else:
-# 			self.address = address
-# 			self.remote = True
-# 
-# 		for ln in range(self.numleds):
-# 			self.leds.append([0x00, 0x00, 0x00])	# Create and clear an array of RGB LED values
-# 
-# 		return
-
 	def __init__(self, remote=False, address='sim', name='nameless', queue=None):
 		self.numleds = 50
 		self.leds = []			# Array of LED values. This may actually exist elsewhere eventually.
@@ -239,6 +210,54 @@ class Holiday:
 
 			return json.dumps({"success": success})
 
+                @theapp.put(routebase + 'stopapps')
+                def do_stopapps():
+                        try:
+                                fp = open('/run/pipebuttons.fifo', 'a')
+                                fp.write('O\n')
+                                fp.close()
+                                success = True
+                        except:
+                                success = False
+
+                        return json.dumps({"success": success})
+
+                @theapp.put(routebase + 'button/mode')
+                def do_button_mode():
+                        try:
+                                fp = open('/run/pipebuttons.fifo', 'a')
+                                fp.write('M\n')
+                                fp.close()
+                                success = True
+                        except:
+                                success = False
+
+                        return json.dumps({"success": success})
+
+                @theapp.put(routebase + 'button/up')
+                def do_button_up():
+                        try:
+                                fp = open('/run/pipebuttons.fifo', 'a')
+                                fp.write('+\n')
+                                fp.close()
+                                success = True
+                        except:
+                                success = False
+
+                        return json.dumps({"success": success})
+
+                @theapp.put(routebase + 'button/down')
+                def do_button_down():
+                        try:
+                                fp = open('/run/pipebuttons.fifo', 'a')
+                                fp.write('-\n')
+                                fp.close()
+                                success = True
+                        except:
+                                success = False
+
+                        return json.dumps({"success": success})
+
 		@theapp.put(routebase + 'runapp')
 		def do_runapp():
 			"""Starts/stops the named app"""
@@ -273,7 +292,9 @@ class Holiday:
 			else:
 				print "stopping %s app" % dj['appname']
 				try:
-					c = subprocess.call(['/home/holiday/scripts/stop-app.sh'], shell=True)
+                                        fp = open('/run/pipebuttons.fifo', 'a')
+                                        fp.write('O\n')
+                                        fp.close()
 					print "%s app stopped" % dj['appname']
 					success = True
 				except subprocess.CalledProcessError:
@@ -288,7 +309,7 @@ class Holiday:
 
 		@theapp.get(routebase + 'swift_version')
 		def get_swift_version():
-			return json.dumps({ "version": "1.0b3" })
+			return json.dumps({ "version": "1.1b1" })
 
 
 		@theapp.get(routebase)

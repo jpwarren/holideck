@@ -62,6 +62,11 @@ def redirect_404(error):
     else:
         return server_root()
 
+@app.error(401)
+def access_error(error):
+        print 'Access error on: %s' % request.url
+        return 'access error'
+
 @app.route('/')
 def server_root():
 	global docroot

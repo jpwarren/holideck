@@ -7,7 +7,7 @@
 // Requires a string 'address' (i.e. IP address 192.168.0.20) or resolvable name (i.e. 'light.local')
 function iotas(address) {
 
-	console.log("Instancing iotas");
+        console.log("Instancing iotas with ", address);
 
 	this.address = address;
 	if (address.length == 0) {
@@ -20,17 +20,22 @@ function iotas(address) {
 	this.ip_addr = null;
 	this.vers = null;
 	this.hostnm = null;
-	this.apis = null;
+        this.apis = null;
+        this.local_device = null;
+        this.local_name = null;
+        this.device_url = null;
 	this.get_status = get_status;
 		
 	// Get the status of IoTAS, config information, etc.
 	// Bit sneaky in its use of global variables, but whatevs.
 	function get_status() {
-		$.ajax({
+                  console.log('get_status: ', iotasrv.urlbase + 'iotas');
+                  $.ajax({
 			type: "GET",
 			async: false,
 			url: iotasrv.urlbase + 'iotas', 
-			success: function(data) {
+                        success: function(data) {
+                                console.log('get_status success');
 				jd = JSON.parse(data)
 				console.log(jd);
 				iotasrv.ip_addr = jd.ip;
@@ -43,8 +48,8 @@ function iotas(address) {
 				console.log("iotas.device_url is " + iotasrv.device_url);
 				console.log(iotasrv);
 			},
-			error: function() {
-				console.log("iotas.get_status failed");
+                        error: function(jqXHR, textStatus, errorThrown) {
+                          console.log(textStatus, errorThrown);
 			}
 		});
 	}

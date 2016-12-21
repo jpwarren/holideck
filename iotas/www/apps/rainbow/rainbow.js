@@ -17,7 +17,6 @@ function rainbow() {
 	function appStart() {
 		console.log("rainbow.appStart");
 		$("head").append('<link rel="stylesheet" href="rainbow.css" />');
-		loadTest();
 	}
 	
 	// Quit App
