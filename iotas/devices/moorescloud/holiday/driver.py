@@ -279,16 +279,15 @@ class Holiday:
 				return
 
 			if (dj['isStart'] == True):
-				print "starting app %s" % dj['appname']
-				app_path = os.path.join(self.appbase, dj['appname'])
-				print 'app_path: %s' % app_path
-				try:
-					c = subprocess.call(['/home/holiday/scripts/start-app.sh', app_path], shell=False)
-					print "%s app started" % dj['appname']
-					success = True
-				except subprocess.CalledProcessError:
-					print "Error starting process"
-					success = False				
+                                appname = dj['appname']
+                                try:
+                                        fp = open('/run/pipebuttons.fifo', 'a')
+                                        fp.write('R%s\n' % appname)
+                                        fp.close()
+                                        success = True
+				        print "%s app started" % appname
+                                except:
+                                        success = False
 			else:
 				print "stopping %s app" % dj['appname']
 				try:
