@@ -40,11 +40,6 @@ class BaseOptParser(optparse.OptionParser):
                         help="Port number to start at for UDP listeners [%default]",
                         type="int", default=9988)
 
-        # Listener mode, TCP or UDP
-        #self.add_option('-m', '--mode', dest='mode',
-        #                help="Mode of the simulator, UDP or TCP [%default]",
-        #                type="choice", choices=['udp', 'tcp'], default='udp')
-
         # Which way to draw multiple strings? Horizontally, like in the browser,
         # or vertically, like a string curtain?
         self.add_option('-o', '--orientation', dest='orientation',
@@ -72,6 +67,9 @@ class BaseOptParser(optparse.OptionParser):
                         help="Disable UDP listener.",
                         action="store_true", default=False)
 
+        self.add_option('', '--no-fifo', dest='nofifo',
+                        help="Disable FIFO listener.",
+                        action="store_true", default=False)
 
         pass
     
@@ -129,7 +127,8 @@ class SimRunner(object):
         self.HolidayList = [ ]
         for i in range(0, self.numstrings):
             self.HolidayList.append( HolidayRemote(notcp=self.options.notcp,
-                                                   noudp=self.options.noudp) )
+                                                   noudp=self.options.noudp,
+                                                   nofifo=self.options.nofifo) )
             pass
 
         if self.options.switchback:
@@ -254,6 +253,8 @@ class SimRunner(object):
                 hol.recv_udp()
             if not self.options.notcp:
                 hol.recv_tcp()
+            if not self.options.nofifo:
+                hol.recv_fifo()
             pass
 
     def blank_strings(self):
